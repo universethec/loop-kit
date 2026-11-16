@@ -1,4 +1,4 @@
-/* The dashboard's look: Harbingr v1 (Alex, 2026-11-13: "you can use the harbingr style from now on"). One screen, no
+/* The dashboard's look: Harbingr v1 (the owner, 2026-11-13: "you can use the harbingr style from now on"). One screen, no
    scrolling on a laptop: the top bar, then four cards; the rest opens in drawers. Linked by the page roadmap.py writes. */
 :root{--bg:#121212;--surface:#191919;--raise:#1f1f1f;--stroke:#434343;--stroke2:#252525;--ink:#FFFFFFE5;--ink2:#FFFFFFB2;--muted:#8A8A8A;
 --accent:#CCBF17;--accent-soft:#CCBF1724;--green:#6EA435;--green-t:#97C459;--yellow-t:#E4C07A;--red:#E55353;--red-t:#EF8787;
@@ -105,14 +105,14 @@ box-shadow:var(--e3);z-index:20;opacity:0;visibility:hidden;transform:translateX
 .mini .schem svg{height:auto}}
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 .g{overflow:hidden}.g .caps{margin-top:6px}.delta:empty{display:none}
-/* the phase bar, quieter (Alex 2026-11-13: 'can we make it more elegant?'): one thin track, done filled, ready faint, no dots */
+/* the phase bar, quieter (the owner 2026-11-13: 'can we make it more elegant?'): one thin track, done filled, ready faint, no dots */
 .rbar{height:6px;gap:2px;border-radius:3px;overflow:hidden;align-self:center}
 .rbar i{border:0;border-radius:0;background:var(--stroke2)}.rbar i.done{background:var(--accent)}.rbar i.startable{background:#CCBF1759}
 .rbar i.add::after{display:none}.rbar i.goal{background:transparent;border:1px dashed var(--stroke);border-radius:3px}
 .row.here{background:transparent;box-shadow:inset 2px 0 0 var(--accent)}.row.here:hover{background:var(--raise)}
 .rc{font-size:11px;white-space:nowrap}
 .lg.startable{background:#CCBF1759;border-color:transparent}
-/* next up (Alex's pick 'A', 2026-11-13): the phase we are in as a card, the step to do now lit; the rest as calm lines */
+/* next up (the owner's pick 'A', 2026-11-13): the phase we are in as a card, the step to do now lit; the rest as calm lines */
 .hero{background:linear-gradient(180deg,#CCBF1714,transparent 80%);border:1px solid #CCBF1755;border-radius:12px;padding:14px 16px;margin-bottom:12px}
 .hero .gl{color:var(--accent)}.hero h3{font:500 20px/24px var(--sans);margin:4px 0 10px}
 .smooth{display:block;height:6px;border-radius:3px;background:var(--stroke2);overflow:hidden;align-self:center}.smooth i{display:block;height:100%;background:var(--accent);border-radius:3px}
@@ -125,7 +125,7 @@ box-shadow:var(--e3);z-index:20;opacity:0;visibility:hidden;transform:translateX
 .dash{grid-template-rows:auto minmax(0,1.35fr) minmax(0,1fr)}#c-road{overflow:visible}
 .ck.done{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}.ck.done>span{display:inline-block;margin-right:10px}
 .hero{padding:12px 16px;margin-bottom:8px}.hero h3{margin:2px 0 8px}
-/* the bar shows the steps (Alex 2026-11-13: 'should reflect the steps, not just a loading') */
+/* the bar shows the steps (the owner 2026-11-13: 'should reflect the steps, not just a loading') */
 .segs{display:flex;gap:4px;height:8px;align-self:center}.segs.big{height:12px;margin-bottom:8px}
 .segs i{flex:1;border-radius:3px;background:var(--stroke2);position:relative}.segs i.done{background:var(--accent)}
 .segs i.now{background:transparent;box-shadow:inset 0 0 0 1.5px var(--accent)}

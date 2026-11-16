@@ -1,7 +1,7 @@
 # {{PROJECT}} — NOW
 
 Where we are, in a few lines. The road is the roadmap (`loop/roadmap.json`, page `loop/roadmap.html`); what done
-means is the done map (`python3 -I loop/scripts/build_donemap.py --status`); Alex's decisions are `DECISIONS.md`;
+means is the done map (`python3 -I loop/scripts/build_donemap.py --status`); the owner's decisions are `DECISIONS.md`;
 history is `git log`.
 
 ## NOW — you are here

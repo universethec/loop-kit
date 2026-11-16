@@ -7,7 +7,7 @@
 #   qa.py hook           pre-commit: a staged unit is closed, and a committed unit never changes
 #   qa.py selftest       planted failures: no promise, a changed promise, a failing line, a vacuous promise
 #
-# Unit file: {"unit": "u1", "step": "<done-map step>", "what": "one sentence", "plain": [three lines for Alex: what changed,
+# Unit file: {"unit": "u1", "step": "<done-map step>", "what": "one sentence", "plain": [three lines for the owner: what changed,
 # what he can look at, what is next], "promise": [{"what": "...", <check>}]}. The step names its phase on the roadmap.
 # The promise must hold the lines kit.json "promise_requires" names (default: build_donemap --advanced/--filled on
 # its step, and review_check.py check <unit>). Checks: file / cmd / json / grep / git (kit.py).
@@ -62,9 +62,9 @@ def validate(root, unit, u):
         out += [f"promise[{i}]: {p}" for p in kit.problems(ln)]
         if isinstance(ln, dict) and not ln.get("what"):
             out.append(f"promise[{i}]: no 'what' (the plain words for the line)")
-    pl = u.get("plain")  # Alex, 2026-11-13: "I want as a rule everything that you do, to be human readable for me"
+    pl = u.get("plain")  # The owner, 2026-11-13: "I want as a rule everything that you do, to be human readable for me"
     if not (isinstance(pl, list) and len(pl) == 3 and all(isinstance(x, str) and len(x.strip()) >= 12 for x in pl)):
-        out.append("'plain': three plain lines for Alex: what changed, what he can look at, what is next")
+        out.append("'plain': three plain lines for the owner: what changed, what he can look at, what is next")
     cmds = " \n ".join(ln.get("cmd", "") for ln in P if isinstance(ln, dict))
     for pat in kit.conf(root).get("promise_requires", REQUIRES):
         rx = pat.replace("{step}", re.escape(str(u.get("step")))).replace("{unit}", re.escape(unit))
@@ -168,7 +168,7 @@ def close_(root, unit):
         print(f"  {'ok  ' if r['ok'] else 'FAIL'}  {r['what']} · {r['saw']}")
     print("  " + (rc.stdout.strip() or rc.stderr.strip()))
     if isinstance(u.get("plain"), list):
-        print("for Alex, in three lines:\n" + "\n".join("  " + x for x in u["plain"]))
+        print("for the owner, in three lines:\n" + "\n".join("  " + x for x in u["plain"]))
     if overall != "pass":
         kit.catch("qa:close-failed", f"{unit}: {passed}/{len(rows)}", unit, root)
         return 1
@@ -256,7 +256,7 @@ def selftest():
         must(c == 2 and "review_check" in out, "open refuses a promise without the review line")
         write("u1", {"unit": "u1", "step": "s1", "what": "make a.txt appear", "promise": [maps(1), rev("u1")], "plain": ["only one line, plain"]})
         c, out = run("open", "u1")
-        must(c == 2 and "'plain'" in out, "open refuses a promise without three plain lines for Alex")
+        must(c == 2 and "'plain'" in out, "open refuses a promise without three plain lines for the owner")
         write("u1", {"unit": "u1", "step": "s1", "what": "make a.txt appear", "promise": [maps(1), rev("u1")]})
         c, out = run("open", "u1")
         must(c == 0, f"open accepts a valid promise ({out.strip().splitlines()[-1]})")

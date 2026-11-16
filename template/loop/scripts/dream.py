@@ -1,5 +1,5 @@
 # Dreaming: an out-of-band pass after a run (loop.sh runs it once when the loop stops or parks). It never edits a rule;
-# it writes proposals to loop/state/dream-<date>.md for Alex to accept or reject.
+# it writes proposals to loop/state/dream-<date>.md for the owner to accept or reject.
 #   (a) process pruning: every gate logs its refusals to loop/state/catches.csv (kit.catch); each gate's catches over
 #       the last 20 closed units are counted, and a gate with zero is proposed for removal (safety-floor gates marked).
 #   (b) lessons: the last run's slice transcripts (session ids from loop/state/metrics.csv, read-only under
@@ -130,7 +130,7 @@ def scan(files):
                         kind, key = "permission", (f"needs approval: {part.group(1)}" if part else norm(text))
                     elif re.search(r"hook error|guard: refused|BLOCKED|refused", text):
                         tail = text.split("refused.", 1)[-1] if "refused." in text else text
-                        kind, key = "refused", norm(tail.split(" Alex can do it himself")[0])
+                        kind, key = "refused", norm(tail.split(" the owner can do it himself")[0])
                     else:
                         kind, key = "error", norm(text)
                     e = found[kind][key]
@@ -161,7 +161,7 @@ def report(root, run=None, tdir=None, window=20, today=None):
     barren = [r for r in mrows if r.get("rc") == "0" and r.get("new_commits") == "0"]
     today = today or dt.date.today().isoformat()
     L = [f"# Dream {today} · {kit.conf(root)['project']}", "",
-         "Proposals only: nothing here changed a rule. Tick accept or reject; a change lands by Alex's hand.", "",
+         "Proposals only: nothing here changed a rule. Tick accept or reject; a change lands by the owner's hand.", "",
          "## (a) Gates and what they caught", "", note, ""]
     if rows:
         L += ["| gate | catches in window | all time | what it refuses |", "|---|---|---|---|"]
@@ -190,8 +190,8 @@ def report(root, run=None, tdir=None, window=20, today=None):
     if barren:
         n += 1
         L += ["### Barren slices", "", f"- [ ] accept  [ ] reject — {len(barren)} slice(s) exited clean with no commit "
-              f"(slices {', '.join(r.get('slice', '?') for r in barren)}): usually a decision only Alex can make, asked in the "
-              "log instead of written to loop/state/NEEDS-ALEX.md. Proposal: a working rule, or make that step needs_alex.", ""]
+              f"(slices {', '.join(r.get('slice', '?') for r in barren)}): usually a decision only the owner can make, asked in the "
+              "log instead of written to loop/state/NEEDS-OWNER.md. Proposal: a working rule, or make that step needs_owner.", ""]
     if n == 0:
         L += ["Nothing to learn from this run: no refusals, denials, repeated errors or barren slices found.", ""]
     out = root / "loop" / "state" / f"dream-{today}.md"
@@ -242,7 +242,7 @@ def selftest():
         tr = lambda i, text: json.dumps({"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": i, "content": text, "is_error": True}]}})
         (tdir / f"{sid}.jsonl").write_text("\n".join([
             tu("a", "Bash", {"command": "git push origin main"}),
-            tr("a", "PreToolUse:Bash hook error: [python3 guard_tool.py]: guard: refused. Never git push (CLAUDE.md, hard rules). Alex can do it himself."),
+            tr("a", "PreToolUse:Bash hook error: [python3 guard_tool.py]: guard: refused. Never git push (CLAUDE.md, hard rules). The owner can do it himself."),
             tu("b", "WebSearch", {"query": "x"}),
             tr("b", "Claude requested permissions to use WebSearch, but you haven't granted it yet."),
             tu("c", "Bash", {"command": "npm test"}), tr("c", "Exit code 1\nnpm ERR! missing script: test"),

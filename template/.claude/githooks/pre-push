@@ -1,18 +1,18 @@
 #!/usr/bin/env bash
 # The last wall against shipping unattended: refuses `git push` whenever the autonomous loop is running.
 #
-# loop/loop.sh exports LOOP_AUTONOMOUS=1 for every slice it fires. Alex's own interactive pushes are untouched:
+# loop/loop.sh exports LOOP_AUTONOMOUS=1 for every slice it fires. The owner's own interactive pushes are untouched:
 # this hook does nothing unless that variable is set. Even if every permission setting somehow allowed a push and
 # the tool guard missed it, git itself refuses here.
 #
 # Layers, outermost first: settings.json denies Bash(git push:*); loop/scripts/guard_tool.py refuses any push
 # command and logs it; this hook refuses at git's own door.
 #
-# Alex changes this file himself (it is a lock: the guard and locks.py refuse a session's edit).
+# The owner changes this file himself (it is a lock: the guard and locks.py refuse a session's edit).
 if [ "${LOOP_AUTONOMOUS:-0}" = "1" ]; then
   echo "" >&2
   echo "  push BLOCKED — autonomous mode is active (LOOP_AUTONOMOUS=1)." >&2
-  echo "     Pushing is Alex's call only. The slice should have written loop/state/NEEDS-ALEX.md and stopped." >&2
+  echo "     Pushing is the owner's call only. The slice should have written loop/state/NEEDS-OWNER.md and stopped." >&2
   echo "" >&2
   exit 1
 fi

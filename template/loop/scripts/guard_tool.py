@@ -6,7 +6,7 @@
 # human-only override token; code (python -c, heredoc, perl, node -e, patch) naming a lock; a write, by an edit tool or
 # a shell command, to a lock (the kit's scripts, kit.json, loop.sh, settings, githooks, .git), to kit.json
 # "locked_globs", to an opened unit's promise, to the transcripts; a new entry at the repo root (kit.json "root_ok").
-# Alex changes any of these himself: a command he types after `!` is not a tool call and this guard never sees it.
+# The owner changes any of these himself: a command he types after `!` is not a tool call and this guard never sees it.
 #
 #   guard_tool.py            (the hook; stdin = the tool call)       guard_tool.py selftest   planted calls
 import fnmatch
@@ -20,7 +20,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 import kit  # noqa: E402
 
 HOME = str(Path.home())
-OVERRIDE = "LOOP_ALEX"
+OVERRIDE = "LOOP_OWNER"
 SCRIPTS = ["kit.py", "guard_tool.py", "locks.py", "qa.py", "review_check.py", "build_donemap.py", "handoff_check.py",
            "dream.py", "brief.py", "lookup.py", "notify.sh", "selftest.sh"]
 LOCKS = [".claude/settings.json", ".claude/settings.local.json", ".claude/githooks/", ".git/", "loop/kit.json", "loop/loop.sh",
@@ -64,7 +64,7 @@ def protected(absolute, root, edit_tool):
     if "/.claude/projects/" in absolute and absolute.endswith(".jsonl"):
         return "guard:edit-lock", "a session transcript"
     if absolute == os.path.join(HOME, ".claude", "settings.json"):
-        return "guard:edit-lock", "Alex's user settings"
+        return "guard:edit-lock", "The owner's user settings"
     r = rel(absolute, root)
     if r is None:
         return None
@@ -95,14 +95,14 @@ def decide(call, root):
             raise Refused(why[0], f"{p} is {why[1]}.")
         body = json.dumps(inp)
         if OVERRIDE in body:
-            raise Refused("guard:override-token", f"the file names {OVERRIDE}, the override only Alex uses.")
+            raise Refused("guard:override-token", f"the file names {OVERRIDE}, the override only the owner uses.")
         return None
     if tool != "Bash":
         return None
     cmd = inp.get("command", "")
     flat = re.sub(r"\s+", " ", cmd)
     if OVERRIDE in flat:
-        raise Refused("guard:override-token", f"{OVERRIDE} is the override only Alex types.")
+        raise Refused("guard:override-token", f"{OVERRIDE} is the override only the owner types.")
     if re.search(r"(?i)--no-ve\w*|hookspath|\bHUSKY=0|\bSKIP_HOOKS\b|GIT_CONFIG_|\bGIT_DIR=|\bcommit-tree\b|\bupdate-ref\b|\balias\.\w+\s*=", flat) or re.search(r"\bgit\s+-c\b", flat):
         raise Refused("guard:hooks-skip", "Skipping or moving the commit hooks, git plumbing that makes commits, and git -c are never allowed.")
     unquoted = re.sub(r'"(?:[^"\\]|\\.)*"|\'[^\']*\'', '""', flat)  # a commit message is words, never flags
@@ -140,7 +140,7 @@ def main():
         decide(call, kit.ROOT)
     except Refused as r:
         kit.catch(r.check, f"{call.get('tool_name')}: {r}")
-        print(f"guard: refused. {r} Alex can do it himself with a command he types after `!`.", file=sys.stderr)
+        print(f"guard: refused. {r} the owner can do it himself with a command he types after `!`.", file=sys.stderr)
         sys.exit(2)
     sys.exit(0)
 
@@ -169,7 +169,7 @@ def selftest():
             (B("git commit -n -m x"), "guard:hooks-skip", "commit -n is refused"),
             (B("git commit -m 'fix the -n flag'"), None, "a -n inside a commit message is allowed"),
             (B("git config core.hooksPath /dev/null"), "guard:hooks-skip", "moving hooksPath is refused"),
-            (B("LOOP_ALEX=1 git commit -m x"), "guard:override-token", "the override token is refused"),
+            (B("LOOP_OWNER=1 git commit -m x"), "guard:override-token", "the override token is refused"),
             (E(".claude/settings.json"), "guard:edit-lock", "editing the settings is refused"),
             (W("loop/scripts/guard_tool.py"), "guard:edit-lock", "writing the guard is refused"),
             (W("loop/reviews/review-u1.json"), "guard:edit-lock", "a kit.json locked glob is refused"),
@@ -179,7 +179,7 @@ def selftest():
             (W("src/app.py"), None, "a normal edit is allowed"),
             (E("CLAUDE.md"), None, "editing an existing root file is allowed"),
             (W("notes.txt"), "guard:root-entry", "a new root entry is refused"),
-            (W("src/x.py", "os.environ['LOOP_ALEX']='1'"), "guard:override-token", "a file naming the override is refused"),
+            (W("src/x.py", "os.environ['LOOP_OWNER']='1'"), "guard:override-token", "a file naming the override is refused"),
             (B("echo x > .claude/settings.json"), "guard:writes-lock", "a shell write to the settings is refused"),
             (B("sed -i '' s/a/b/ loop/kit.json"), "guard:writes-lock", "sed -i on kit.json is refused"),
             (B("python3 -c \"open('loop/kit.json','w')\""), "guard:code-names-lock", "python -c naming a lock is refused"),

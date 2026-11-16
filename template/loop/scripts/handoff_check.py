@@ -1,5 +1,5 @@
 # Is the handoff clean before a new round starts? Run by loop/loop.sh before every slice; any problem parks the loop
-# with the reason in loop/state/NEEDS-ALEX.md, so a new round never starts on top of a dirty one.
+# with the reason in loop/state/NEEDS-OWNER.md, so a new round never starts on top of a dirty one.
 #
 #   handoff_check.py            exit 0 and 'clean', or exit 1 and one line per problem
 #   handoff_check.py selftest   every check refuses its planted break (a dirty tree, two NOW entries, a stale map)
@@ -34,7 +34,7 @@ def now_problems(text, cap=20):
         out.append(f"NOW holds {len(where)} 'Where we are' entries; it holds exactly one")
     if len(lines) > cap:
         out.append(f"NOW is {len(lines)} lines; the cap is {cap}")
-    # the NOW section itself (Alex, 2026-11-13, his yes to 'NOW capped at five lines'): open notes go on the roadmap
+    # the NOW section itself (the owner, 2026-11-13, his yes to 'NOW capped at five lines'): open notes go on the roadmap
     head = next((i for i, x in enumerate(lines) if x.startswith("## NOW")), None)
     body = [x for x in lines[head + 1:] if x.strip()] if head is not None else []
     if len(body) > NOW_LINES:

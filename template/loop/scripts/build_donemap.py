@@ -1,10 +1,10 @@
 # The done map: what "done" means, computed from the files. loop/qa/done-rules.json lists steps; each step has
-# checkable lines (done_when), may need Alex (needs_alex) and may wait on other steps (waits_on). A line is met
+# checkable lines (done_when), may need the owner (needs_owner) and may wait on other steps (waits_on). A line is met
 # only when its check passes, never because a sentence says so. Output: loop/qa/done-map.json (do not hand-edit).
 #
 #   build_donemap.py                 write the map          --check        fail if the map differs from a fresh build
 #   build_donemap.py --status        every step             --brief        headline + startable steps only
-#   build_donemap.py --next-agent    for loop.sh: exit 0 + step id (take it), 2 = only Alex can unblock, 3 = done
+#   build_donemap.py --next-agent    for loop.sh: exit 0 + step id (take it), 2 = only the owner can unblock, 3 = done
 #   build_donemap.py --require S     exit 1 unless every step S waits on is done
 #   build_donemap.py --filled S      exit 1 unless every line of S is met
 #   build_donemap.py --advanced S N  exit 1 unless at least N lines of S are met
@@ -55,7 +55,7 @@ def build(root=None, rules=None, live=False):
             if live:
                 row["saw"] = saw  # live only: a command's output may differ run to run, the map must not
             lines.append(row)
-        steps.append({"id": s["id"], "name": s.get("name", s["id"]), "needs_alex": bool(s.get("needs_alex")),
+        steps.append({"id": s["id"], "name": s.get("name", s["id"]), "needs_owner": bool(s.get("needs_owner")),
                       "waits_on": list(s.get("waits_on", [])), "lines": lines,
                       "met": sum(x["met"] for x in lines), "of": len(lines)})
     by = {s["id"]: s for s in steps}
@@ -65,7 +65,7 @@ def build(root=None, rules=None, live=False):
         s["waits_open"] = [w for w in s["waits_on"] if not by[w]["done"]]
         s["status"] = "done" if s["done"] else ("blocked" if s["waits_open"] else "startable")
     nxt = next((s["id"] for s in steps if s["status"] == "startable"), None)
-    nxt_agent = next((s["id"] for s in steps if s["status"] == "startable" and not s["needs_alex"]), None)
+    nxt_agent = next((s["id"] for s in steps if s["status"] == "startable" and not s["needs_owner"]), None)
     return {"what": "Computed by loop/scripts/build_donemap.py from loop/qa/done-rules.json; do not edit by hand.",
             "project": R.get("project") or kit.conf(root)["project"], "mission": R.get("mission", ""),
             "done": all(s["done"] for s in steps), "met": sum(s["met"] for s in steps), "of": sum(s["of"] for s in steps),
@@ -76,14 +76,14 @@ def headline(D):
     by = {s["id"]: s for s in D["steps"]}
     nm = lambda i: f"{i} '{by[i]['name']}'" if i else "none"
     return (f"{D['project']} done: {'YES' if D['done'] else 'NO'} · {D['met']} of {D['of']} lines met · "
-            f"{D['steps_done']} of {len(D['steps'])} steps done · next: {nm(D['next'])} · next without Alex: {D['next_agent'] or 'none'}")
+            f"{D['steps_done']} of {len(D['steps'])} steps done · next: {nm(D['next'])} · next without the owner: {D['next_agent'] or 'none'}")
 
 
 def step_line(s, cap=None):
     open_ = [x["what"] + (f" ({x['saw']})" if x.get("saw") else "") for x in s["lines"] if not x["met"]]
     shown = open_ if cap is None else open_[:cap]
     more = f" … {len(open_) - len(shown)} more" if len(open_) > len(shown) else ""
-    return (f"  [{s['status']:9}]{' (needs Alex)' if s['needs_alex'] else ''} {s['id']} '{s['name']}': {s['met']}/{s['of']}"
+    return (f"  [{s['status']:9}]{' (needs the owner)' if s['needs_owner'] else ''} {s['id']} '{s['name']}': {s['met']}/{s['of']}"
             + (f" · open: {'; '.join(shown)}{more}" if shown else "")
             + (f" · waits on: {', '.join(s['waits_open'])}" if s["waits_open"] else ""))
 
@@ -112,13 +112,13 @@ def brief_text(D, root=None):
 
 
 def next_agent(D):
-    """-> (exit code, text) for loop.sh: 0 a step to take, 2 only Alex can unblock, 3 every line met."""
+    """-> (exit code, text) for loop.sh: 0 a step to take, 2 only the owner can unblock, 3 every line met."""
     if D["done"]:
         return 3, "done: every line of the map is met"
     if D["next_agent"]:
         return 0, D["next_agent"]
     start = [f"{s['id']} '{s['name']}'" for s in D["steps"] if s["status"] == "startable"]
-    return 2, "waits on Alex: " + ("; ".join(start) + " (each needs Alex)" if start else "no step is startable")
+    return 2, "waits on the owner: " + ("; ".join(start) + " (each needs the owner)" if start else "no step is startable")
 
 
 def main(argv, root=None):
@@ -206,11 +206,11 @@ def selftest():
         R0 = {"project": "t", "steps": [{"id": "a", "done_when": [yes]}, {"id": "b", "done_when": [no], "waits_on": ["a"]}]}
         code, out = run(R0, "--next-agent")
         must(code == 0 and out.strip() == "b", f"--next-agent exits 0 and names b when b is startable (got {code} {out.strip()!r})")
-        # 2: only a step that needs Alex is startable
-        R2 = {"project": "t", "steps": [{"id": "a", "done_when": [no], "needs_alex": True}, {"id": "b", "done_when": [no], "waits_on": ["a"]}]}
+        # 2: only a step that needs the owner is startable
+        R2 = {"project": "t", "steps": [{"id": "a", "done_when": [no], "needs_owner": True}, {"id": "b", "done_when": [no], "waits_on": ["a"]}]}
         code, out = run(R2, "--next-agent")
-        must(code == 2 and "waits on Alex" in out, f"--next-agent exits 2 when only Alex can unblock (got {code})")
-        # 2: nothing startable at all (b waits on a, a needs Alex and is blocked by nothing else) -> still 2, never 0
+        must(code == 2 and "waits on the owner" in out, f"--next-agent exits 2 when only the owner can unblock (got {code})")
+        # 2: nothing startable at all (b waits on a, a needs the owner and is blocked by nothing else) -> still 2, never 0
         R2b = {"project": "t", "steps": [{"id": "a", "done_when": [no], "waits_on": ["b"]}, {"id": "b", "done_when": [no], "waits_on": ["a"]}]}
         code, out = run(R2b, "--next-agent")
         must(code == 2 and "no step is startable" in out, f"--next-agent exits 2 on a wait cycle (got {code})")

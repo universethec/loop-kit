@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# One buzz to Alex's phone via ntfy. No loop, no state, no ceremony.
+# One buzz to the owner's phone via ntfy. No loop, no state, no ceremony.
 #
 #   bash loop/scripts/notify.sh "message" ["title"]
 #
@@ -8,7 +8,7 @@
 # A unit buzzes once, when it lands; the loop buzzes when it parks, stops or finishes.
 # Never fails the caller: a buzz that cannot be sent is printed to stderr and the work goes on.
 #
-# The loop's preflight refuses to start without this file: a loop that cannot reach Alex must not run.
+# The loop's preflight refuses to start without this file: a loop that cannot reach the owner must not run.
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 CONF="$(python3 -I -c 'import json,sys
 c=json.load(open(sys.argv[1]))

@@ -4,12 +4,12 @@
 #   locks.py                  check the staged files            locks.py subject <msgfile>   the subject cap
 #   locks.py selftest         every lock refuses its planted break
 #
-# 1. done-rules: no step removed; a step's done_when lines and waits_on only grow; needs_alex never goes true -> false.
+# 1. done-rules: no step removed; a step's done_when lines and waits_on only grow; needs_owner never goes true -> false.
 # 2. DECISIONS.md is append-only: no line removed (a line may grow, e.g. a '(replaced by D7)' mark at its end).
 # 3. Sizes (kit.json): CLAUDE.md <= 200 lines, loop/HANDOFF.md <= 20, memory.json <= 12 rules, headlines <= 170 chars.
-# 4. A lock (the kit's scripts, kit.json, loop.sh, settings, githooks) changes only by Alex's own hand.
+# 4. A lock (the kit's scripts, kit.json, loop.sh, settings, githooks) changes only by the owner's own hand.
 # 5. No new entry at the repo root outside kit.json root_ok.       6. A commit subject over kit.json subject_max (100).
-# Alex's own hand: LOOP_ALEX=1 in his environment skips 1, 2, 4 and 5; the tool guard refuses that token from a session.
+# The owner's own hand: LOOP_OWNER=1 in his environment skips 1, 2, 4 and 5; the tool guard refuses that token from a session.
 import json
 import os
 import re
@@ -58,7 +58,7 @@ def check_rules(old, new):
     for s in O.get("steps", []):
         n = nb.get(s.get("id"))
         if n is None:
-            out.append(f"done-rules: step '{s.get('id')}' was removed; adding is free, removing needs Alex's own hand")
+            out.append(f"done-rules: step '{s.get('id')}' was removed; adding is free, removing needs the owner's own hand")
             continue
         newlines = [canon(x) for x in n.get("done_when", [])]
         for x in s.get("done_when", []):
@@ -69,8 +69,8 @@ def check_rules(old, new):
         gone = set(s.get("waits_on", [])) - set(n.get("waits_on", []))
         if gone:
             out.append(f"done-rules: step '{s['id']}' no longer waits on {sorted(gone)}")
-        if s.get("needs_alex") and not n.get("needs_alex"):
-            out.append(f"done-rules: step '{s['id']}' no longer needs Alex")
+        if s.get("needs_owner") and not n.get("needs_owner"):
+            out.append(f"done-rules: step '{s['id']}' no longer needs the owner")
     return out
 
 
@@ -104,20 +104,20 @@ def is_lock(path):
 
 def check(root):
     c = kit.conf(root)
-    alex = os.environ.get("LOOP_ALEX") == "1"
+    owner = os.environ.get("LOOP_OWNER") == "1"
     first = git(root, "rev-parse", "--verify", "-q", "HEAD")[0] != 0
     out = []  # (check id, problem)
     for st, path, old in staged(root):
-        if not alex and not first and (is_lock(path) or is_lock(old)):
-            out.append(("locks:lock-changed", f"{path}: a lock changes only by Alex's own hand"))
-        if not alex and st in ("A", "R") and "/" not in path and path not in c["root_ok"]:
+        if not owner and not first and (is_lock(path) or is_lock(old)):
+            out.append(("locks:lock-changed", f"{path}: a lock changes only by the owner's own hand"))
+        if not owner and st in ("A", "R") and "/" not in path and path not in c["root_ok"]:
             out.append(("locks:root-entry", f"{path}: a new entry at the repo root (kit.json root_ok)"))
         new = shown(root, "", path) if st != "D" else None
-        if not alex and old == RULES and (st in ("D", "R")):
+        if not owner and old == RULES and (st in ("D", "R")):
             out.append(("locks:rules-weakened", "done-rules: the file was deleted or renamed"))
-        elif not alex and path == RULES:
+        elif not owner and path == RULES:
             out += [("locks:rules-weakened", p) for p in check_rules(shown(root, "HEAD", old), new)]
-        if not alex and path == "DECISIONS.md" and st in ("M", "D"):
+        if not owner and path == "DECISIONS.md" and st in ("M", "D"):
             _, d = git(root, "diff", "--cached", "-U0", "--", "DECISIONS.md")
             out += [("locks:decisions-append-only", p) for p in check_decisions(d)]
         if new is not None:
@@ -149,7 +149,7 @@ def selftest():
         if not ok:
             bad.append(what)
 
-    R = {"steps": [{"id": "a", "done_when": [{"file": "x"}], "waits_on": [], "needs_alex": True}, {"id": "b", "done_when": [{"file": "y"}], "waits_on": ["a"]}]}
+    R = {"steps": [{"id": "a", "done_when": [{"file": "x"}], "waits_on": [], "needs_owner": True}, {"id": "b", "done_when": [{"file": "y"}], "waits_on": ["a"]}]}
     cp = lambda: json.loads(json.dumps(R))
     must(check_rules(json.dumps(R), json.dumps(R)) == [], "unchanged rules pass")
     R1 = cp(); R1["steps"].append({"id": "c", "done_when": [{"file": "z"}]}); R1["steps"][0]["done_when"].append({"file": "w"})
@@ -160,8 +160,8 @@ def selftest():
     must(check_rules(json.dumps(R), json.dumps(R3)), "a changed line is refused")
     R4 = cp(); R4["steps"][1]["waits_on"] = []
     must(check_rules(json.dumps(R), json.dumps(R4)), "a dropped wait is refused")
-    R5 = cp(); R5["steps"][0]["needs_alex"] = False
-    must(check_rules(json.dumps(R), json.dumps(R5)), "needs_alex true -> false is refused")
+    R5 = cp(); R5["steps"][0]["needs_owner"] = False
+    must(check_rules(json.dumps(R), json.dumps(R5)), "needs_owner true -> false is refused")
     must(check_decisions("--- a\n+++ b\n-D1 old\n+D1 old (replaced by D2)\n") == [], "a decision marked replaced passes")
     must(check_decisions("--- a\n+++ b\n-D1 old\n+D1 new wording\n"), "a reworded decision is refused")
     c = dict(kit.DEFAULTS)
@@ -172,7 +172,7 @@ def selftest():
     must(check_text("loop/qa/memory.json", json.dumps({"rules": [{"id": "r", "headline": "h" * 170}]}), c) == [], "a 170-char headline passes")
     import contextlib
     import io
-    outer = os.environ.pop("LOOP_ALEX", None)  # a selftest run under Alex's hand must still see the locks refuse
+    outer = os.environ.pop("LOOP_OWNER", None)  # a selftest run under the owner's hand must still see the locks refuse
     with tempfile.TemporaryDirectory() as td, contextlib.redirect_stdout(io.StringIO()):
         root = Path(td) / "repo"
         root.mkdir()
@@ -204,12 +204,12 @@ def selftest():
         ids = [i for i, _ in check(root)]
         must("locks:lock-changed" in ids, "a staged change to a lock is refused")
         must("locks:root-entry" in ids, "a new root entry is refused")
-        os.environ["LOOP_ALEX"] = "1"
-        must(check(root) == [], "Alex's own hand passes both")
-        del os.environ["LOOP_ALEX"]
+        os.environ["LOOP_OWNER"] = "1"
+        must(check(root) == [], "The owner's own hand passes both")
+        del os.environ["LOOP_OWNER"]
         del os.environ["LOOP_CATCHES"]
     if outer is not None:
-        os.environ["LOOP_ALEX"] = outer
+        os.environ["LOOP_OWNER"] = outer
     if bad:
         print("locks selftest: FAILED: " + "; ".join(bad))
         return 1

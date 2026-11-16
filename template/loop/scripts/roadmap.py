@@ -1,5 +1,5 @@
 # The roadmap and the dashboard of building the product: one road per project and the project's health, on one page.
-# Alex, 2026-11-13: "we need to fix the roadmap and replace what we have now"; "I would like to see a dashboard on the
+# The owner, 2026-11-13: "we need to fix the roadmap and replace what we have now"; "I would like to see a dashboard on the
 # project health overall as we build it, because a lot of the time we bloat and we have shit floating around in several
 # places"; "most importabtly is for the project to be actually mainted pristine, minimalistic, highly-performant not
 # just for the dashboard to look good, the dashboard is just a meassure of that". The same program runs in every
@@ -12,7 +12,7 @@
 # Status is computed from the done map and the marks' proofs; health from one dated log, loop/qa/health-log.json,
 # written by --measure at each close (files counted from git, so the page is the same on any machine).
 #
-# The road (phases, steps, marks, parts, health caps) changes only through `change`, which refuses words Alex did not
+# The road (phases, steps, marks, parts, health caps) changes only through `change`, which refuses words the owner did not
 # type (where the project has a words check), numbers the version and computes what changed. A phase is done when its
 # steps are done AND its marks are true. It cannot stop an edit of a kept version together with its fingerprint; git
 # shows that. Notes are not the road: they change freely.
@@ -20,7 +20,7 @@
 #   roadmap.py                         write the page               roadmap.py --measure   add today's health row, write the page
 #   roadmap.py --check                 exit 1 on any problem         roadmap.py --status    one line: version, phase, next step
 #   roadmap.py change "his words" [--date D]                         a new version of the road, with his reason
-#   roadmap.py --sign DATE "his words" [roadmap|dashboard]           Alex's sign-off (he runs it himself)
+#   roadmap.py --sign DATE "his words" [roadmap|dashboard]           the owner's sign-off (he runs it himself)
 #   roadmap.py selftest                the planted truths            (run each as python3 -I loop/scripts/roadmap.py ...)
 import datetime as dt
 import glob
@@ -37,7 +37,7 @@ HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
 LEVELS = ("ruled", "built", "proven")
 ROAD_KEYS = ("id", "name", "plain", "done_means", "steps", "marks")
-PROGRAM_CAP = 900  # this program's own lines; past it the dashboard flags itself (Alex's yes, 2026-11-13)
+PROGRAM_CAP = 900  # this program's own lines; past it the dashboard flags itself (the owner's yes, 2026-11-13)
 DRIFT_AT = 5
 BLOAT_RED, BLOAT_AMBER = 3.0, 1.5  # lines of helper code per line of engine code
 
@@ -63,7 +63,7 @@ def dump(x):
 
 
 def said_checker():
-    """Whether a line is among what Alex typed: this project's words check when it has one; None when it has none."""
+    """Whether a line is among what the owner typed: this project's words check when it has one; None when it has none."""
     try:
         import alex_said
         return alex_said.said
@@ -143,8 +143,8 @@ def problems(R, D):
     out += [f"mark {i!r} is used twice" for i in sorted({i for i in mk if mk.count(i) > 1})]
     out += [f"mark {m['id']!r} has no proof" for p in R.get("phases", []) for m in p.get("marks", []) if not m.get("proof")]
     out += [f"a title names {k!r}, which is neither a phase nor a step" for k in R.get("titles", {}) if k not in set(ph_ids) | steps_on_map]
-    if R.get("titles"):  # once a project names things for Alex, every new phase and step needs his kind of name before a close
-        out += [f"'{k}' has no plain title for Alex: add one to 'titles'" for k in list(ph_ids) + sorted(steps_on_map) if k not in R["titles"]]
+    if R.get("titles"):  # once a project names things for the owner, every new phase and step needs his kind of name before a close
+        out += [f"'{k}' has no plain title for the owner: add one to 'titles'" for k in list(ph_ids) + sorted(steps_on_map) if k not in R["titles"]]
     in_arcs = [i for a in R.get("arcs", []) for i in a["phases"]]
     if R.get("arcs"):
         out += [f"phase {i!r} sits in no arc" for i in ph_ids if i not in in_arcs] + [f"phase {i!r} sits in two arcs" for i in sorted({i for i in in_arcs if in_arcs.count(i) > 1})]
@@ -259,7 +259,7 @@ def measure(cfg, date=None):
            "clutter": [{"name": x["name"], "count": len(glob.glob(str(root / x["dir"] / x.get("glob", "*"))))} for x in H.get("clutter", [])],
            "retired_present": [p for p in H.get("retired", []) if (root / p).exists()],
            "red_checks": [c["name"] for c in H.get("checks", []) if run(c["cmd"]).returncode != 0],
-           "loop": {"running": any("RUNNING" in s for s in loop), "line": loop[0] if loop else "", "needs_alex": bool(H.get("needs_alex")) and (root / H["needs_alex"]).exists()},
+           "loop": {"running": any("RUNNING" in s for s in loop), "line": loop[0] if loop else "", "needs_owner": bool(H.get("needs_owner")) and (root / H["needs_owner"]).exists()},
            "work": work, "roadmap_lines": (HERE / "roadmap.py").read_bytes().count(b"\n"),
            "joined": joined_dates(root, [s["id"] for s in D["steps"]], ((J(cfg.log)["rows"] or [{}])[-1].get("joined", {}) if cfg.log.exists() else {}))}
     log = J(cfg.log) if cfg.log.exists() else {"what": "The project's health, one row per day, written by `roadmap.py --measure` at each close; the dashboard reads it. Never edited by hand.", "rows": []}
@@ -272,7 +272,7 @@ def measure(cfg, date=None):
 def flags(C, row):
     """Red flags, computed: (level, what, what it means in plain words, what to do). level: red or amber."""
     out = [] if row else [("amber", "Health has not been measured yet", "The dashboard has no numbers to show.", "measure at the next close")]
-    row = row or {"drift": None, "instructions": [], "red_checks": [], "retired_present": [], "roadmap_lines": 0, "loop": {"needs_alex": False}}
+    row = row or {"drift": None, "instructions": [], "red_checks": [], "retired_present": [], "roadmap_lines": 0, "loop": {"needs_owner": False}}
     if row.get("drift") is not None and row["drift"] >= DRIFT_AT:
         out.append(("red", f"{row['drift']} pieces of work in a row without measuring the goal",
                     "We kept building but never checked whether the engine predicts real people better. Building without measuring is how a project drifts.",
@@ -302,7 +302,7 @@ def flags(C, row):
         out.append(("red", f"The dashboard's own program is past {PROGRAM_CAP} lines", "The measuring tool is itself bloating.", "cut it; the cap stays"))
     if not C["fresh"]:
         out.append(("red", "The road changed without your words", "Someone moved the plan without asking you.", "version it with your reason"))
-    if row["loop"]["needs_alex"]:
+    if row["loop"]["needs_owner"]:
         out.append(("amber", "The loop left a note that it waits on you", "When the loop works alone and gets stuck, it leaves you a note. One is still lying there.",
                     "read it, then clear it"))
     if C["versions"] and not C["versions"][-1].get("words_checked", True):
@@ -319,13 +319,13 @@ def compute(cfg, R, D, log=None):
     marks, phases = {}, []
     for p in R["phases"]:
         ss = [{"id": i, "name": by[i]["name"], "status": by[i]["status"], "met": by[i]["met"], "of": by[i].get("cells", by[i].get("of", 0)),
-               "alex": bool(by[i].get("needs_alex"))} for i in p["steps"]]
+               "owner": bool(by[i].get("needs_owner"))} for i in p["steps"]]
         ms = [{"id": m["id"], "name": m["name"], "says": m.get("says", ""), "met": all(proof_ok(cfg.root, x) for x in m["proof"])} for m in p.get("marks", [])]
         marks.update({m["id"]: m for m in ms})
         phases.append({"id": p["id"], "name": p["name"], "plain": p["plain"], "done_means": p["done_means"], "steps": ss, "marks": ms,
                        "notes": p.get("notes", []), "done": bool(ss or ms) and all(s["status"] == "done" for s in ss) and all(m["met"] for m in ms),
                        "steps_done": sum(s["status"] == "done" for s in ss)})
-    T = R.get("titles", {})  # Alex's names for the phases and steps (2026-11-13: 'you are focused on describing it to yourself not to me')
+    T = R.get("titles", {})  # The owner's names for the phases and steps (2026-11-13: 'you are focused on describing it to yourself not to me')
     for p in phases:
         p["name"] = T.get(p["id"], p["name"])
         for s_ in p["steps"]:
@@ -364,7 +364,7 @@ def compute(cfg, R, D, log=None):
          "arch_read": R.get("architecture", {}).get("read", ""), "versions": versions,
          "before": R.get("before", []), "fresh": bool(versions) and versions[-1]["fingerprint"] == fingerprint(road_of(R)),
          "fonts": R.get("fonts"), "style": R.get("style"), "words": R.get("words", []), "rows": rows, "row": rows[-1] if rows else None,
-         "waiting": [s["name"] for p in phases for s in p["steps"] if s["status"] == "startable" and s["alex"]]}
+         "waiting": [s["name"] for p in phases for s in p["steps"] if s["status"] == "startable" and s["owner"]]}
     C["flags"] = flags(C, C["row"])
     return C
 
@@ -517,7 +517,7 @@ def page(C):
     arch = schematic()
     words = "".join(f"<div><dt>{e(w['word'])}</dt><dd>{e(w['means'])}</dd></div>" for w in C["words"])
     vers = "".join(f"<h4>Version {x['v']} · {e(fmt_date(x['date']))}</h4><ul><li>“" + "” · “".join(e(r) for r in x["reason"]) + "”"
-                   + ("" if x.get("words_checked", True) else " (not verified as typed by Alex)")
+                   + ("" if x.get("words_checked", True) else " (not verified as typed by the owner)")
                    + "".join(f"</li><li>{e(c)}" for c in x["changed"]) + "</li></ul>" for x in reversed(C["versions"]))
     before = "".join(f"<li>{e(fmt_date(b['date']))}: {e(b['what'])} ({e(b['road'])}, {e(b['commit'])})</li>" for b in C["before"])
     title = e(cur["name"]) if cur else "Every phase is done"
@@ -569,7 +569,7 @@ def selftest():
             return str(ex)
         return ""
 
-    STEP = lambda i, st, met, of: {"id": i, "name": f"step {i}", "status": st, "met": met, "cells": of, "needs_alex": i == "b2"}
+    STEP = lambda i, st, met, of: {"id": i, "name": f"step {i}", "status": st, "met": met, "cells": of, "needs_owner": i == "b2"}
     MAP = {"met": 7, "cells": 12, "steps": [STEP("a1", "done", 3, 3), STEP("a2", "done", 2, 2), STEP("b1", "done", 1, 1),
                                             STEP("b2", "startable", 1, 4), STEP("c1", "blocked", 0, 2)]}
     HEALTH = {"engine": {"dirs": ["eng"], "ext": [".ts"], "skip": [".test.ts"]}, "helpers": {"dirs": ["tools"], "ext": [".py"]},
@@ -638,14 +638,14 @@ def selftest():
         must(any("sits in no arc" in x for x in problems(dict(R2, arcs=R2["arcs"][:1]), MAP)), "a phase in no arc is refused")
         pg3 = page(compute(cfg, dict(R, titles={"a": "First thing", "b": "Do the second thing", "c": "Third thing", "a1": "s1", "a2": "s2", "b1": "s3", "b2": "Ship the widget", "c1": "s4"}), MAP))
         must("<h3>Do the second thing</h3>" in pg3 and "Ship the widget" in pg3 and "step b2" not in pg3.split("<section class='drawer'")[0],
-             "NAMES FOR ALEX: his titles replace the map's names on the page")
+             "NAMES FOR THE OWNER: their titles replace the map's names on the page")
         must(any("neither a phase nor a step" in x for x in problems(dict(R, titles={"zz": "x"}), MAP)), "a title for nothing is refused")
         must(any("'c1' has no plain title" in x for x in problems(dict(R, titles={"b2": "Ship the widget"}), MAP)), "a new step without a plain title is refused")
-        must(C["waiting"] == ["step b2"], "a startable step that needs Alex is listed as waiting on him")
+        must(C["waiting"] == ["step b2"], "a startable step that needs the owner is listed as waiting on him")
         must(any("no version" in x for x in check(cfg)) and any("changed without your words" in f[1] for f in C["flags"]), "a road with no version is refused and flagged")
         must(any("not been measured" in f[1] for f in C["flags"]), "an unmeasured project says so")
         # NO SILENT CHANGE
-        must("not found among what Alex typed" in refused(lambda: change(cfg, "words he never typed", "2026-11-13", said=HIS)), "a change without his words is refused")
+        must("not found among what the owner typed" in refused(lambda: change(cfg, "words he never typed", "2026-11-13", said=HIS)), "a change without his words is refused")
         must("yyyy-mm-dd" in refused(lambda: change(cfg, "his words, typed by him", "13 Nov", said=HIS)), "a version with a bad date is refused")
         v = change(cfg, "his words, typed by him", "2026-11-13", said=HIS)
         must(v["v"] == 1 and "the road set" in v["changed"][0], "version 1 is written with his words and what it set")
@@ -675,7 +675,7 @@ def selftest():
         must(any("over its cap (4 of 3" in w for w in fw) and any("old.json" in w for w in fw), "RED FLAGS: a cap crossed and a retired file present are flagged")
         must(all(f[2] and f[3] for f in C["flags"]) and ("cut it back under the cap" in pg and "yours to remove" in pg and "can confuse the next session" in pg), "every flag says what to do, on the page")
         must("1.0×" in pg and "4 loose" in pg and "4/3" in pg and "of 12 checks say yes" in pg, "the page shows the measured counts")
-        must(any("wait on you" in w for w in fw), "a startable step waiting on Alex is flagged")
+        must(any("wait on you" in w for w in fw), "a startable step waiting on the owner is flagged")
         must(check(cfg) != [] and write(cfg) and check(cfg) == [], "THE PAGE IS THE LOG'S: after a new measurement the page is stale until rebuilt")
         must("1.0×" in pg and " since " not in pg.split("<section class=" + chr(39) + "drawer")[0], "one row shows no trend, not a made-up one")
         (Path(td) / "tools" / "w.py").write_text("1\n" * 25)
@@ -708,14 +708,14 @@ def selftest():
         write(cfg)
         must("not signed" in refused(lambda: sign(cfg, "2026-11-13", "words he never typed", said=HIS)), "a sign-off in words he never typed is refused")
         out = sign(cfg, "2026-11-13", "his words, typed by him", said=HIS, name="dashboard")
-        must(out.name == "alex-dashboard-2026-11-13.json" and J(out)["version"] == 1, "a sign-off names what it signs and the version")
+        must(out.name == "owner-dashboard-2026-11-13.json" and J(out)["version"] == 1, "a sign-off names what it signs and the version")
         must("never written over" in refused(lambda: sign(cfg, "2026-11-14", "his words, typed by him", said=HIS, name="dashboard")), "a second sign-off is refused")
         R = J(cfg.road)
         R["phases"][0]["marks"][0]["proof"] = [{"file": "never.txt"}]
         R["versions"][0]["words_checked"] = False
         C = compute(cfg, R, MAP)
         must(C["phases"][0]["where"] != "done", "a phase whose steps are done but whose mark is not true is not done")
-        must(any("not checked" in f[1] for f in C["flags"]) and "not verified as typed by Alex" in page(C), "unchecked words are flagged and shown")
+        must(any("not checked" in f[1] for f in C["flags"]) and "not verified as typed by the owner" in page(C), "unchecked words are flagged and shown")
     # EVERY STEP ONCE, AND THE OTHER REFUSALS
     for mutate, what in [(lambda R: R["phases"][1]["steps"].append("a1"), "sits in two phases"), (lambda R: R["phases"][2]["steps"].remove("c1"), "in no phase"),
                          (lambda R: R["phases"][2]["steps"].append("zz"), "does not have"), (lambda R: R["architecture"]["nodes"][0]["ruled"].append("step:zz"), "neither a step"),
@@ -771,9 +771,9 @@ def change(cfg, words_, date=None, said=None):
     lines = [w.strip() for w in words_.split(";") if w.strip()]
     said = said if said is not None else said_checker()
     if not lines:
-        fail("no change without his words: give the reason Alex typed")
+        fail("no change without his words: give the reason the owner typed")
     if said is not None and not all(said(w) for w in lines):
-        fail("not changed: those words are not found among what Alex typed in this project")
+        fail("not changed: those words are not found among what the owner typed in this project")
     bad = problems(R, J(cfg.map))
     if bad:
         fail("the road is not valid, so no version is written:\n  " + "\n  ".join(bad))
@@ -791,9 +791,9 @@ def change(cfg, words_, date=None, said=None):
     return v
 
 
-SIGNS = {"roadmap": "Alex's sign-off on the roadmap: this road, on this page, is the one road of the project from now on; it changes only through a "
+SIGNS = {"roadmap": "The owner's sign-off on the roadmap: this road, on this page, is the one road of the project from now on; it changes only through a "
                     "numbered version carrying his words. It rules no part of the engine and does not say the phases are right.",
-         "dashboard": "Alex's sign-off on the dashboard: this page is how the project's health is watched from now on, every number from the dated "
+         "dashboard": "The owner's sign-off on the dashboard: this page is how the project's health is watched from now on, every number from the dated "
                       "measurement written at each close. It does not say the project is pristine; it says this is how we will see whether it is."}
 
 
@@ -802,7 +802,7 @@ def sign(cfg, date, words_, said=None, name="roadmap"):
     folder = cfg.root / R.get("signoffs", "loop/qa")
     if name not in SIGNS or not re.fullmatch(r"20\d\d-\d\d-\d\d", date):
         fail(f"sign what ({', '.join(SIGNS)}), on a date yyyy-mm-dd")
-    if any(folder.glob(f"alex-{name}-*.json")):
+    if any(folder.glob(f"owner-{name}-*.json")):
         fail("not signed: a sign-off is already there, and it is never written over")
     bad = check(cfg)
     if bad:
@@ -810,9 +810,9 @@ def sign(cfg, date, words_, said=None, name="roadmap"):
     said = said if said is not None else said_checker()
     lines = [w.strip() for w in words_.split(";") if w.strip()]
     if not lines or (said is not None and not all(said(w) for w in lines)):
-        fail("not signed: those words are not found among what Alex typed in this project")
+        fail("not signed: those words are not found among what the owner typed in this project")
     v = R["versions"][-1]
-    out = folder / f"alex-{name}-{date}.json"
+    out = folder / f"owner-{name}-{date}.json"
     out.write_text(dump({"what": SIGNS[name], "words": lines, "at": date, "road": "loop/roadmap.json", "version": v["v"],
                          "fingerprint": v["fingerprint"], "phases": [p["name"] for p in v["road"]["phases"]]}))
     return out

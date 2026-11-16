@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-# The project's index on the start screen: what exists, the mission ledger's newest entry, and Alex's corrections in
-# force. Ported from harbingr-v2 (2026-11-16, Alex: "we don't have a summary of the project"; "this is like a ledger that
+# The project's index on the start screen: what exists, the mission ledger's newest entry, and the owner's corrections in
+# force. Ported from harbingr-v2 (2026-11-16, the owner: "we don't have a summary of the project"; "this is like a ledger that
 # in theory should focus the mission more and more"; "we literally have this built"). One file holds all three:
 # loop/qa/index.json. Lean on purpose: the start screen reads one screen, and depth is one command away.
 #
@@ -40,7 +40,7 @@ def save(I, root=None):
 
 
 def dreams(root=None):
-    """(proposals waiting for Alex, his yeses not yet applied), read off loop/state/dreams (listen.py)."""
+    """(proposals waiting for the owner, his yeses not yet applied), read off loop/state/dreams (listen.py)."""
     d = Path(root or kit.ROOT) / "loop" / "state" / "dreams"
     w = y = 0
     for f in d.glob("proposals-*.json") if d.exists() else []:
@@ -60,18 +60,18 @@ def lines(I, root=None):
     if led:
         e = led[-1]
         L.append(f"--- MISSION LEDGER, entry {e['n']} of {len(led)} ({e['date']}; any entry: index.py ledger N)")
-        L.append(f"Alex: \"{e['words']}\"")
+        L.append(f"The owner: \"{e['words']}\"")
         if e.get("sharper"):
             L.append(f"Sharper (Claude's wording, his to correct): {e['sharper']}")
         if e.get("open"):
             L.append(f"Open: {e['open']}")
     if I.get("corrections"):
-        L.append("--- ALEX'S CORRECTIONS, IN FORCE")
+        L.append("--- THE OWNER'S CORRECTIONS, IN FORCE")
         L += [f"- {c['date']} \"{c['words']}\" → {c['rule']}" for c in I["corrections"]]
     w, y = dreams(root)
     if y:
-        L.append(f"Dreams: {y} of Alex's yeses not yet applied: apply them first, one commit, then mark each applied (listen.py show).")
-    L.append(f"Dreams: {w} proposal(s) wait for Alex (listen.py show)." if w else "Dreams: none waiting (at the end of a session with him: listen.py gather, then listen.py run).")
+        L.append(f"Dreams: {y} of the owner's yeses not yet applied: apply them first, one commit, then mark each applied (listen.py show).")
+    L.append(f"Dreams: {w} proposal(s) wait for the owner (listen.py show)." if w else "Dreams: none waiting (at the end of a session with him: listen.py gather, then listen.py run).")
     return L
 
 
@@ -94,7 +94,7 @@ def problems(I, root=None, before=None):
         if e.get("n") != i:
             bad.append(f"ledger entry {e.get('n')} is not numbered {i}: entries are numbered 1, 2, 3 in order")
         if not str(e.get("words", "")).strip():
-            bad.append(f"ledger entry {i} carries no words of Alex's")
+            bad.append(f"ledger entry {i} carries no words of the owner's")
     for old in (before if before is not None else head_entries(root)):
         now = next((e for e in led if e.get("n") == old.get("n")), None)
         if now is None:

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# From a task to the questions it needs, and the one small piece that answers each. Alex, 2026-11-16: "it seems like
+# From a task to the questions it needs, and the one small piece that answers each. The owner, 2026-11-16: "it seems like
 # you always try to brute force your way into solution, digets everything, but that's you eating junk food, we want you
 # to eat super healthy whole foods"; "who do we decide the question ... we need to have an intelligence layer to decide
 # the question". A whole food is the smallest piece that is complete on its own, from the source: one decision line,
@@ -10,9 +10,9 @@
 #   questions.py decision D4                one decision, and the later ones that name it (replaced, amended)
 #   questions.py selftest                   planted truths
 #
-# THE ORDER IS THE RULE: (a) what the project already holds (the done map's met lines, the resources), (b) what Alex
+# THE ORDER IS THE RULE: (a) what the project already holds (the done map's met lines, the resources), (b) what the owner
 # decided (DECISIONS.md), (c) what he said (the road's versions, in his words), (d) what is still open (the phase notes,
-# the step's unmet lines). Only (d) may go to Alex. A target is never chosen from words alone: they guess badly.
+# the step's unmet lines). Only (d) may go to the owner. A target is never chosen from words alone: they guess badly.
 # Nothing here writes. It cannot judge whether a question is the right one; that stays the session's. Stdlib only.
 import json
 import math
@@ -74,7 +74,7 @@ def questions(task, F, step_id=None):
     out = [f"TASK: {task}"]
     if S:
         out.append(f"TARGET: {S['name']} [{S['id']}] · {S.get('status')} · {S.get('met')} of {S.get('of')} lines met"
-                   + ("; waits on: " + ", ".join(S["waits_open"]) if S.get("waits_open") else "") + ("; needs Alex" if S.get("needs_alex") else ""))
+                   + ("; waits on: " + ", ".join(S["waits_open"]) if S.get("waits_open") else "") + ("; needs the owner" if S.get("needs_owner") else ""))
     else:
         best = rank([s["name"] + " " + " ".join(x["what"] for x in s.get("lines", [])) for s in steps], ws)[:3]
         out.append("TARGET: not chosen from words (they guess badly); the closest steps, pick one with --step ID:"
@@ -87,7 +87,7 @@ def questions(task, F, step_id=None):
     R = F["resources"]
     out += [f"   open: {R[i]['where']}  ·  {R[i]['answers']}" for i in rank([f"{r['id']} {r['where']} {r['answers']}" for r in R], ws)[:3]]
     out.append(f"   more: python3 -I loop/scripts/lookup.py find {' '.join(ws[:2])}")
-    out.append("b. What did Alex decide?")
+    out.append("b. What did the owner decide?")
     D = decisions(F["decisions"])
     hit = [D[i] for i in rank([ln for _, ln in D], ws)[:4]]
     out += [f"   {ln}" for _, ln in hit] or ["   no decision holds the words"]
@@ -95,7 +95,7 @@ def questions(task, F, step_id=None):
     V = F["road"].get("versions", [])
     vt = [" ".join(v.get("reason", [])) if isinstance(v.get("reason"), list) else str(v.get("reason", "")) for v in V]
     out += [f"   v{V[i]['v']} ({V[i].get('date')}): {vt[i][:220]}" for i in rank(vt, ws)[:2]] or ["   no version of the road holds the words"]
-    out.append("d. What is still open? (only this may go to Alex: two concrete cases, my pick, what each answer changes)")
+    out.append("d. What is still open? (only this may go to the owner: two concrete cases, my pick, what each answer changes)")
     phase = next((p for p in F["road"].get("phases", []) if S and S["id"] in p.get("steps", [])), None)
     notes = [x for p in ([phase] if phase else F["road"].get("phases", [])) for x in p.get("notes", []) if holds(x, ws)]
     out += [f"   note: {x[:220]}" for x in notes[-3:]]

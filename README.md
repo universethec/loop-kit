@@ -30,7 +30,7 @@ the first commit, and every session after that opens already informed.
   proposes changes to the index and the rules. Each proposal must quote you word for word or it is thrown away. You
   say yes or no; a yes stays on the start screen until the commit that applies it.
 - **An unattended loop**, when you want one: `loop/loop.sh start` works through the steps that do not need you and
-  leaves what does in `loop/state/NEEDS-ALEX.md`.
+  leaves what does in `loop/state/NEEDS-OWNER.md`.
 
 ## Set up once
 
@@ -78,8 +78,8 @@ cd ~/code/my-project && bash loop/scripts/selftest.sh && python3 -I loop/scripts
 
 - Done means a check passes, never a sentence.
 - Read the question first, then the one small piece that answers it; never a whole file or a folder.
-- Ask the owner only what the project, his decisions and his words leave open.
-- His words are kept as he said them; a summary of them is labelled as one.
+- Ask the owner only what the project, their decisions and their words leave open.
+- The owner's words are kept as they were said; a summary of them is labelled as one.
 - A new lesson replaces or shortens a line; the caps refuse growth.
 
 ## Limits

@@ -1,6 +1,6 @@
 ---
 name: new-project
-description: Create a new project that already runs Alex's autonomous Claude loop (lean loop-kit), with the road, the done map, the start-screen index (what exists, the mission ledger in his words, his corrections) and listening across sessions. Use when Alex says "boot loop-kit", "new project", "start a project with the loop", "set up a project like harbingr", or types /new-project.
+description: Create a new project that already runs the owner's autonomous Claude loop (lean loop-kit), with the road, the done map, the start-screen index (what exists, the mission ledger in his words, his corrections) and listening across sessions. Use when the owner says "boot loop-kit", "new project", "start a project with the loop", "set up a project like harbingr", or types /new-project.
 ---
 
 # New project, already on the loop
@@ -10,7 +10,7 @@ reference for answers.json; read it only if something below is unclear.
 
 ## 1. Ask, on one screen
 
-Draft every answer yourself first from what Alex already said, then show him ONE message, plain words, each line
+Draft every answer yourself first from what the owner already said, then show him ONE message, plain words, each line
 with your pick so he can answer "yes" or change one line:
 
 1. **Name** — your pick.
@@ -18,7 +18,7 @@ with your pick so he can answer "yes" or change one line:
    said them (they become ledger entry 1, `mission_words`, word for word), and what is open, one sentence
    (`open_problem`), if there is one.
 3. **Steps** (2 to 6, in order of work). For each: a name, what done means as lines a machine can check (a file
-   exists, a command passes, a file holds some words), and whether only Alex can finish it. Draft them all.
+   exists, a command passes, a file holds some words), and whether only the owner can finish it. Draft them all.
 4. **Doors** — what always needs him. Default: what a user sees; money. (Deleting files, rewriting git history and
    a new root entry are always added.)
 5. **Project rules**, optional: one line each. Default: none.

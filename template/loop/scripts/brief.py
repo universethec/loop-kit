@@ -39,7 +39,7 @@ def text(root):
         out += [f"- {r['id']}: {r.get('headline') or r['rule'][:160]}" for r in json.loads(mem.read_text())["rules"]]
     except Exception as e:
         out.append(f"(memory.json unreadable: {e})")
-    # The project's index (index.py): what exists, the mission ledger's newest entry, Alex's corrections in force, and
+    # The project's index (index.py): what exists, the mission ledger's newest entry, the owner's corrections in force, and
     # the dreams waiting or applied. Read from loop/qa/index.json, every line's file checked by `index.py --check`.
     try:
         import index

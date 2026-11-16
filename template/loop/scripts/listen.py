@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
-# Listening: dreaming from Alex's own words (ported from harbingr-v2, 2026-11-16, Alex: "dreaming with self-learning,
+# Listening: dreaming from the owner's own words (ported from harbingr-v2, 2026-11-16, the owner: "dreaming with self-learning,
 # without bloating"; "I want you to become intelligent from session to session"). A pass after a session with him that
 # reads only the messages the harness marks as typed by a person, and proposes changes to the project's index
 # (loop/qa/index.json: project lines, ledger, corrections) and to the working rules (loop/qa/memory.json). Every
-# proposal must quote him word for word, or it is thrown away. It never changes a file in git: Alex says yes or no;
+# proposal must quote him word for word, or it is thrown away. It never changes a file in git: the owner says yes or no;
 # a yes stays on the start screen (index.py) until the commit that applies it is marked with `applied`.
 # (dream.py is the other pass: it prunes gates and reads refused tool calls after the unattended loop.)
 #
@@ -33,20 +33,20 @@ BUDGET = 160_000      # characters of the packet handed to the dreamer
 KINDS = ("project-line", "ledger", "correction", "working-rule", "stale")
 
 PROMPT = """You are the listening pass of a project. You never saw these sessions live. Below are: the project's index
-(what every session reads at the start: what exists, the mission ledger's newest entry, Alex's corrections in force), the
-working rules (how sessions must work with Alex), and a packet of Alex's own typed messages from recent sessions, each
+(what every session reads at the start: what exists, the mission ledger's newest entry, the owner's corrections in force), the
+working rules (how sessions must work with the owner), and a packet of the owner's own typed messages from recent sessions, each
 with what Claude had said just before it.
 
 Find what should change so that the NEXT session is less blind and makes fewer of the same mistakes:
-- correction: a correction Alex made more than once, or once and sharply, about how Claude works or about Claude
+- correction: a correction the owner made more than once, or once and sharply, about how Claude works or about Claude
   ignoring what is already built; say the rule a session should follow.
-- ledger: words of Alex's that state the mission or the open problem more sharply than the ledger's newest entry.
+- ledger: words of the owner's that state the mission or the open problem more sharply than the ledger's newest entry.
 - project-line: something that exists in the project that the index's project lines lack or get wrong.
-- working-rule: a pattern in how Alex wants to be worked with that no current rule covers.
+- working-rule: a pattern in how the owner wants to be worked with that no current rule covers.
 - stale: an index line or a rule that his words show is out of date.
 Keep only patterns that matter. Prefer few, sharp proposals over many. Never propose what the index or rules already say.
 
-Every proposal MUST quote Alex word for word from the packet (copy exactly; a quote not found verbatim is thrown away).
+Every proposal MUST quote the owner word for word from the packet (copy exactly; a quote not found verbatim is thrown away).
 Answer with JSON only:
 {"proposals": [{"kind": one of %s, "change": "the exact line to add or replace, in plain words",
 "replaces": "the line it replaces, or null", "why": "one sentence", "quotes": [{"session": "<id>", "words": "<verbatim>"}],
@@ -111,7 +111,7 @@ def session_turns(lines):
             continue
         w = his_words(d)
         if w:
-            turns.append({"at": d.get("timestamp", ""), "claude_before": last[-BEFORE:], "alex": w})
+            turns.append({"at": d.get("timestamp", ""), "claude_before": last[-BEFORE:], "owner": w})
     return turns
 
 
@@ -154,7 +154,7 @@ def flat(s):
 
 def verified(proposals, packet):
     """Keep a proposal only if it is well formed and every quote stands word for word in his messages of the packet."""
-    said = {s["session"]: flat(" \n ".join(t["alex"] for t in s["turns"])) for s in packet["sessions"]}
+    said = {s["session"]: flat(" \n ".join(t["owner"] for t in s["turns"])) for s in packet["sessions"]}
     kept, thrown = [], []
     for p in proposals:
         qs = p.get("quotes") or []
@@ -202,7 +202,7 @@ def all_proposals():
 def show():
     waiting = [(f, D, p) for f, D, p in all_proposals() if p.get("answer") is None]
     if not waiting:
-        print("listen show: nothing waits for Alex")
+        print("listen show: nothing waits for the owner")
         return 0
     for _, _, p in waiting:
         print(f"[{p['id']}] {p['kind']} · seen in {p.get('sessions_seen', '?')} session(s)\n  change: {p['change']}"
@@ -228,7 +228,7 @@ def applied(pid, commit):
     for f, D, p in all_proposals():
         if p["id"] == pid:
             if not (p.get("answer") or {}).get("yes"):
-                print(f"listen applied: {pid} has no yes from Alex; refused")
+                print(f"listen applied: {pid} has no yes from the owner; refused")
                 return 1
             p["applied"] = {"commit": commit, "at": now()}
             f.write_text(json.dumps(D, indent=1, ensure_ascii=False) + "\n")
@@ -251,7 +251,7 @@ def selftest():
         {"type": "user", "message": {"content": "<system-reminder>not his</system-reminder>"}},
     ]]
     T = session_turns(lines)
-    must([t["alex"] for t in T] == ["we literally have this built"], f"his words were not told apart from the rest: {[t['alex'] for t in T]}")
+    must([t["owner"] for t in T] == ["we literally have this built"], f"his words were not told apart from the rest: {[t['owner'] for t in T]}")
     must(T[0]["claude_before"] == "Shall I ask you about the stake?", "what Claude said before his message was lost")
     packet = {"sessions": [{"session": "s1", "turns": T}]}
     good = {"kind": "correction", "change": "read first", "quotes": [{"session": "s1", "words": "we literally have  this built"}]}

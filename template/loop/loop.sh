@@ -6,11 +6,11 @@
 # override). Each slice gets its own --session-id, logged in loop/state/metrics.csv, so dream.py can read it later.
 #
 # Sentinels (the slice or the map writes them, the loop reads them):
-#   loop/state/NEEDS-ALEX.md  -> only Alex can unblock. Buzz, park.      loop/state/STOP -> Alex's stop.
+#   loop/state/NEEDS-OWNER.md  -> only the owner can unblock. Buzz, park.      loop/state/STOP -> the owner's stop.
 #   loop/state/DONE.md        -> every line of the done map met. Buzz, stop.
 # Safety: LOOP_AUTONOMOUS=1 makes the pre-push hook refuse any push; the tool guard and commit locks hold in every
 # slice; a slice cap and a per-slice timeout; two barren slices in a row park the loop.
-# When the loop stops or parks, dream.py runs once and writes loop/state/dream-<date>.md (proposals for Alex).
+# When the loop stops or parks, dream.py runs once and writes loop/state/dream-<date>.md (proposals for the owner).
 #
 #   loop/loop.sh start | stop | kill | status | run        (start = detached tmux + caffeinate; walk away)
 
@@ -44,11 +44,11 @@ NOTIFY_SH="$REPO/loop/scripts/notify.sh"
 notify() { bash "$NOTIFY_SH" "$1" "$TITLE"; echo ">> NOTIFY: $1"; }
 catch() { ( cd "$REPO" && python3 -I -c 'import sys; sys.path.insert(0, "loop/scripts"); import kit; kit.catch(sys.argv[1], sys.argv[2])' "$1" "$2" ) || true; }
 
-# PREFLIGHT: a loop that cannot reach Alex, or whose gates are not wired, must not run unattended. (A moved
+# PREFLIGHT: a loop that cannot reach the owner, or whose gates are not wired, must not run unattended. (A moved
 # notify.sh once made every buzz of a 12-slice run exit 127 into a log nobody read; silence must be impossible.)
 preflight() {
   local missing=""
-  [ -f "$NOTIFY_SH" ]              || missing="$missing  $NOTIFY_SH (the only way this loop reaches Alex)\n"
+  [ -f "$NOTIFY_SH" ]              || missing="$missing  $NOTIFY_SH (the only way this loop reaches the owner)\n"
   [ -f "$MCP_CONFIG" ]             || missing="$missing  $MCP_CONFIG\n"
   [ -f "$KIT" ]                    || missing="$missing  $KIT\n"
   [ -f "$REPO/loop/HANDOFF.md" ]   || missing="$missing  $REPO/loop/HANDOFF.md (the slice has no map without it)\n"
@@ -59,7 +59,7 @@ preflight() {
   if [ -n "$missing" ]; then
     printf '\n  loop REFUSED to start — these are missing:\n\n' >&2
     printf "$missing" >&2
-    printf '\n  Fix them, then start again. A loop that cannot buzz Alex is worse than a loop that never ran.\n\n' >&2
+    printf '\n  Fix them, then start again. A loop that cannot buzz the owner is worse than a loop that never ran.\n\n' >&2
     exit 1
   fi
 }
@@ -90,14 +90,14 @@ net_wait() {
 # The scar tissue: which failures to wait out vs stop on.
 TRANSIENT_API_RE="socket connection was closed|socket hang up|ECONNRESET|ETIMEDOUT|ENOTFOUND|EAI_AGAIN|fetch failed|Connection error|overloaded|rate.?limit|ConnectionRefused|ECONNREFUSED|Unable to connect|ENETDOWN|ENETUNREACH|network is (down|unreachable)|session limit|usage limit|hit your.*limit|API Error|[Cc]onnection (closed|lost|reset|refused)|mid-response"
 # Human-only blockers: waiting cannot clear them. Tested BEFORE the transient regex, which also matches these
-# strings (12 retries over 4h40m once learned nothing). A per-model limit is human-only too: Alex picks the model.
+# strings (12 retries over 4h40m once learned nothing). A per-model limit is human-only too: the owner picks the model.
 HARD_BLOCK_RE="credit balance is too low|weekly limit|reached your .*limit"
 
 cmd="${1:-run}"
 case "$cmd" in
   start)
     tmux has-session -t "$SESSION" 2>/dev/null && { echo "already running (tmux: $SESSION)"; exit 1; }
-    preflight   # fail in Alex's terminal, not silently inside tmux
+    preflight   # fail in the owner's terminal, not silently inside tmux
     mkdir -p "$LOOP_DIR"; rm -f "$LOOP_DIR/STOP"
     tmux new -d -s "$SESSION" "caffeinate -dis bash '$REPO/loop/loop.sh' run"
     echo "loop started, detached (tmux: $SESSION). Mac stays awake, lid OPEN, plugged in."
@@ -113,7 +113,7 @@ case "$cmd" in
     tmux has-session -t "$SESSION" 2>/dev/null && echo "loop: RUNNING (tmux: $SESSION)" || echo "loop: not running"
     [ -f "$LOOP_DIR/STOP" ] && echo "STOP requested — parking after current slice"
     [ -f "$LOOP_DIR/DONE.md" ] && echo "DONE: $(head -1 "$LOOP_DIR/DONE.md")"
-    [ -f "$LOOP_DIR/NEEDS-ALEX.md" ] && { echo "--- NEEDS ALEX:"; head -5 "$LOOP_DIR/NEEDS-ALEX.md"; }
+    [ -f "$LOOP_DIR/NEEDS-OWNER.md" ] && { echo "--- NEEDS THE OWNER:"; head -5 "$LOOP_DIR/NEEDS-OWNER.md"; }
     [ -f "$LOOP_DIR/metrics.csv" ] && { echo "--- last slices:"; tail -3 "$LOOP_DIR/metrics.csv"; }
     git -C "$REPO" log --oneline -3
     exit 0;;
@@ -128,7 +128,7 @@ export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0
 
 preflight   # again: `run` is reachable directly, and tmux swallows stderr
 mkdir -p "$LOOP_DIR/logs"
-rm -f "$LOOP_DIR/NEEDS-ALEX.md" "$LOOP_DIR/DONE.md"
+rm -f "$LOOP_DIR/NEEDS-OWNER.md" "$LOOP_DIR/DONE.md"
 RUN_ID="$(date '+%Y%m%dT%H%M%S')"
 
 # DREAM once, whenever and however the run ends (stop, park, done, error, cap): proposals only, never a rule change.
@@ -156,13 +156,13 @@ while [ "$steps" -lt "$MAX_ITERS" ]; do
   # THE HANDOFF IS CLEAN BEFORE A NEW ROUND: the tree committed, NOW one entry, the done map fresh; any problem parks
   # the loop with the reason, so a new round never starts on top of a dirty one.
   HANDOFF=$(cd "$REPO" && python3 -I loop/scripts/handoff_check.py); HANDOFF_RC=$?
-  if [ "$HANDOFF_RC" -ne 0 ]; then echo "$HANDOFF" > "$LOOP_DIR/NEEDS-ALEX.md"; notify "NEEDS YOU, the handoff is not clean: $(head -c 240 "$LOOP_DIR/NEEDS-ALEX.md")"; exit 0; fi
+  if [ "$HANDOFF_RC" -ne 0 ]; then echo "$HANDOFF" > "$LOOP_DIR/NEEDS-OWNER.md"; notify "NEEDS YOU, the handoff is not clean: $(head -c 240 "$LOOP_DIR/NEEDS-OWNER.md")"; exit 0; fi
 
-  # THE MAP DECIDES: exit 3 = every line met; 2 = only steps that need Alex; 0 = the step id to take.
+  # THE MAP DECIDES: exit 3 = every line met; 2 = only steps that need the owner; 0 = the step id to take.
   NEXT=$(cd "$REPO" && python3 -I loop/scripts/build_donemap.py --next-agent); NEXT_RC=$?
   if [ "$NEXT_RC" -eq 3 ]; then echo "$NEXT" > "$LOOP_DIR/DONE.md"; notify "DONE (computed from the map): $NEXT"; exit 0; fi
-  if [ "$NEXT_RC" -eq 2 ]; then echo "$NEXT" > "$LOOP_DIR/NEEDS-ALEX.md"; notify "NEEDS YOU (computed from the map): $(head -c 240 "$LOOP_DIR/NEEDS-ALEX.md")"; exit 0; fi
-  if [ "$NEXT_RC" -ne 0 ]; then echo "$NEXT" > "$LOOP_DIR/NEEDS-ALEX.md"; notify "NEEDS YOU, the done map did not build: $(head -c 240 "$LOOP_DIR/NEEDS-ALEX.md")"; exit 0; fi
+  if [ "$NEXT_RC" -eq 2 ]; then echo "$NEXT" > "$LOOP_DIR/NEEDS-OWNER.md"; notify "NEEDS YOU (computed from the map): $(head -c 240 "$LOOP_DIR/NEEDS-OWNER.md")"; exit 0; fi
+  if [ "$NEXT_RC" -ne 0 ]; then echo "$NEXT" > "$LOOP_DIR/NEEDS-OWNER.md"; notify "NEEDS YOU, the done map did not build: $(head -c 240 "$LOOP_DIR/NEEDS-OWNER.md")"; exit 0; fi
 
   echo ""
   echo "=== slice $((steps+1))/$MAX_ITERS  step $NEXT  (retries $retries/$RETRY_MAX)  ($(date '+%H:%M:%S')) ==="
@@ -188,9 +188,9 @@ while [ "$steps" -lt "$MAX_ITERS" ]; do
   echo "$(date '+%Y-%m-%dT%H:%M:%S'),$RUN_ID,$((steps+1)),$retries,$rc,$DUR,$NEW_COMMITS,$SID,$LAST_SUBJ" >> "$METRICS"
   tail -20 "$LOG"
 
-  if [ -f "$LOOP_DIR/NEEDS-ALEX.md" ]; then
-    notify "NEEDS YOU: $(head -c 240 "$LOOP_DIR/NEEDS-ALEX.md")"
-    echo "parked on NEEDS-ALEX."; exit 0
+  if [ -f "$LOOP_DIR/NEEDS-OWNER.md" ]; then
+    notify "NEEDS YOU: $(head -c 240 "$LOOP_DIR/NEEDS-OWNER.md")"
+    echo "parked on NEEDS-OWNER."; exit 0
   fi
   if [ -f "$LOOP_DIR/DONE.md" ]; then
     notify "BUILD COMPLETE: $(head -c 200 "$LOOP_DIR/DONE.md")"
@@ -225,7 +225,7 @@ while [ "$steps" -lt "$MAX_ITERS" ]; do
   fi
 
   # A SILENT SPIN IS WORSE THAN A PARK. Slices once exited rc=0 five times in a row having committed nothing, each
-  # asking for a decision in its log instead of writing NEEDS-ALEX.md; the buzz is wired to that file, so the loop
+  # asking for a decision in its log instead of writing NEEDS-OWNER.md; the buzz is wired to that file, so the loop
   # looked healthy while achieving nothing. A rule with no mechanical check is a wish: two barren slices park it.
   if [ "$NEW_COMMITS" -eq 0 ]; then
     barren=$((barren + 1))
@@ -233,8 +233,8 @@ while [ "$steps" -lt "$MAX_ITERS" ]; do
       {
         echo "# The loop parked itself — $barren slices in a row committed nothing"
         echo
-        echo "Neither NEEDS-ALEX.md nor DONE.md was written and nothing was committed, so no slice is making"
-        echo "progress. The usual cause: a slice needs a decision only Alex can make and asked for it in its log."
+        echo "Neither NEEDS-OWNER.md nor DONE.md was written and nothing was committed, so no slice is making"
+        echo "progress. The usual cause: a slice needs a decision only the owner can make and asked for it in its log."
         echo
         echo "Last log: \`$LOG\`"
         echo
@@ -243,9 +243,9 @@ while [ "$steps" -lt "$MAX_ITERS" ]; do
         echo '```'
         tail -40 "$LOG"
         echo '```'
-      } > "$LOOP_DIR/NEEDS-ALEX.md"
+      } > "$LOOP_DIR/NEEDS-OWNER.md"
       catch "loop:barren-park" "$barren slices, zero commits; last log $LOG"
-      notify "PARKED: $barren slices, zero commits. A slice wants a decision — see loop/state/NEEDS-ALEX.md"
+      notify "PARKED: $barren slices, zero commits. A slice wants a decision — see loop/state/NEEDS-OWNER.md"
       echo "parked — $barren barren slices."; exit 0
     fi
     echo "slice $((steps+1)) committed nothing (barren $barren/2)."
