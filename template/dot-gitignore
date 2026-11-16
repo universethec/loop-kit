@@ -1,6 +1,8 @@
 # the loop's runtime state (sentinels, metrics, catches, logs, dream reports): per machine, never committed
 /loop/state/
 __pycache__/
+# the activity page, rebuilt at every close and by `loop.py activity`: always fresh, never committed
+/loop/activity.html
 .DS_Store
 # machine-local Claude permissions: never commit
 .claude/settings.local.json

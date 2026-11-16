@@ -5,7 +5,8 @@
 #
 # What it prints, in order: the done map's --brief (headline + startable steps only); the NOW entry (cut to 600
 # chars); a DIRTY TREE line when a session died mid-unit; the last 5 commit subjects (cut to 100 chars); ONE line per
-# working rule (the 'headline' of loop/qa/memory.json, never the full 'rule'); how to look a fact up.
+# working rule (the 'headline' of loop/qa/memory.json, never the full 'rule'); how to look a fact up; last, the one
+# suggested next action (loop.py next). At most kit.json screen_max_lines lines (default 60).
 # Nothing here writes. Stdlib only. Run with python3 -I.
 #
 # If the done map cannot be built (a broken rules file), the briefing says so instead of failing the session start.
@@ -48,7 +49,13 @@ def text(root):
         out.append(f"(the index did not print: {e})")
     out.append("--- before reading for a task: python3 -I loop/scripts/questions.py <task> [--step ID] (the questions in order,"
                " each with its one small piece; stop when answered, never a whole file or a folder)")
-    return "\n".join(out) + "\n"
+    try:  # the screen ends with the one suggested next action (loop.py next), so nobody has to work it out
+        import loop
+        out.append("--- next: " + loop.next_action(root))
+    except Exception as e:
+        out.append(f"--- next: (could not be worked out: {e})")
+    import growth  # the screen stays short as the project grows (kit.json screen_max_lines); the next action stays last
+    return "\n".join(growth.cap(out, growth.caps(root)["screen_max_lines"], "loop.py status")) + "\n"
 
 
 if __name__ == "__main__":

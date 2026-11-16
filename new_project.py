@@ -2,12 +2,15 @@
 """new_project.py — create a project already running the owner's autonomous Claude loop (lean form).
 
   python3 new_project.py <path> --answers answers.json    create it: copy template/, fill it, git init, hooks, commit
+  python3 new_project.py <path> --answers a.json --adopt   a folder that already has code: add only loop/, .claude/
+                                                         and the kit's root files that are missing; never overwrite
   python3 new_project.py --selftest                      create a sample project in a temp dir and run its selftests
   python3 new_project.py --sample                        print a sample answers.json
+  python3 new_project.py --upgrade <project> [--diff]    what changed in the kit since the project was booted (reads only)
   python3 new_project.py --help                          this text
 
 What it does: copies template/ to <path> (which must not exist or be empty); fills CLAUDE.md, loop/HANDOFF.md,
-DECISIONS.md; writes loop/kit.json, loop/qa/done-rules.json, loop/qa/memory.json (the owner's four personal rules, then
+DECISIONS.md; writes loop/kit.json, loop/qa/done-rules.json, loop/qa/memory.json (the owner's personal rules, then
 the project's), loop/qa/resources.json; `git init -b main`; core.hooksPath = .claude/githooks; builds the done map;
 first commit. Then, in the project: `python3 -I loop/scripts/build_donemap.py --brief`, `bash loop/scripts/selftest.sh`,
 and when the owner says so, `loop/loop.sh start`.
@@ -30,13 +33,14 @@ answers.json (only name, mission and steps are required):
    "words": [{"word": "...", "means": "..."}],  the shared words, optional
    "genesis": {"what": "...", "why": "...", "for_whom": "...", "not": "...", "done": "...", "open": "...",
                "words": ["the owner's own sentences, verbatim"]},   the founding interview -> GENESIS.md
-   "mission_words": "The owner's own words for the mission, if he gave them: ledger entry 1 (default: the mission line)",
+   "mission_words": "The owner's own words for the mission, if they gave them: ledger entry 1 (default: the mission line)",
    "open_problem": "what is open, one sentence, optional: the ledger's first Open line",
    "doors": ["money", "what a user sees"],      what always needs the owner (deleting files, rewriting git history and
                                                 a new root entry are always added)
    "rules": [{"id": "x", "headline": "<=170 chars, printed at every start", "rule": "the full rule"}],
    "model": "claude-opus-5-5", "effort": "xhigh", "notify_title": "Toy Counter", "ntfy_topic": "<ntfy topic>",
-   "root_entries": ["src", "tests"],             allowed at the repo root besides the kit's own
+   "root_entries": ["src", "tests"],             allowed at the repo root besides the kit's own (the default); each
+                                                 missing one is made at boot as an empty folder with a .gitkeep
    "locked_globs": ["data/raw/*"],               paths no session may change (loop/reviews/* is always locked)
    "allowed_tools_extra": ["Bash(npm test:*)"]}  extra tools for unattended slices
 """
@@ -65,7 +69,7 @@ SAMPLE = {
         {"id": "counter", "name": "The counter counts", "done_when": [
             "file:src/count.py",
             {"what": "the counter's tests pass", "cmd": "python3 -I -m unittest discover -s tests -q"}]},
-        {"id": "ship", "name": "The owner tries it on his own file", "needs_owner": True, "done_when": [
+        {"id": "ship", "name": "The owner tries it on their own file", "needs_owner": True, "done_when": [
             {"what": "The owner's verdict is recorded", "grep": "DECISIONS.md", "has": "counter accepted"}]}],
     "doors": ["what a user sees", "money"],
     "rules": [{"id": "small", "headline": "Keep every file under 200 lines; split before it grows.",
@@ -172,15 +176,30 @@ def fill(text, V):
     return text
 
 
-def create(dest, A, quiet=False):
+def create(dest, A, quiet=False, adopt=False):
     dest = Path(dest).expanduser().resolve()
-    if dest.exists() and any(dest.iterdir()):
-        sys.exit(f"new_project: {dest} exists and is not empty; pick a new path")
     bad = problems(A)
     if bad:
         sys.exit("new_project: answers.json is not valid:\n  " + "\n  ".join(bad))
+    if adopt:  # a folder that already has code: skill/adopt.py adds only the method's files, never overwrites
+        sys.path.insert(0, str(KIT / "skill"))
+        import adopt as AD
+        return AD.adopt(dest, A, write_files, finish, quiet)
+    if dest.exists() and any(dest.iterdir()):
+        sys.exit(f"new_project: {dest} exists and is not empty; pick a new path, or add --adopt to keep its code")
+    name, V = write_files(dest, A)
+    return finish(dest, name, V, ["git", "init", "-q", "-b", "main"], ["-A"], quiet)
+
+
+def write_files(dest, A):
+    """Everything the kit writes into a project folder, before git. -> (name, the filled values)."""
     name, today = A["name"].strip(), dt.date.today().isoformat()
     shutil.copytree(TEMPLATE, dest, ignore=shutil.ignore_patterns("__pycache__", ".DS_Store"), dirs_exist_ok=True)
+    A = {**A, "root_entries": list(A.get("root_entries") or ["src", "tests"])}
+    for e in A["root_entries"]:  # the project's empty work folders, kept by git through a .gitkeep (adopt skips any already there)
+        if "." not in e and not (dest / e).exists():
+            (dest / e).mkdir()
+            (dest / e / ".gitkeep").write_text("")
     (dest / "dot-gitignore").rename(dest / ".gitignore")
     for d in ("loop/qa/units", "loop/qa/answers", "loop/reviews"):
         (dest / d).mkdir(parents=True, exist_ok=True)
@@ -222,7 +241,7 @@ def create(dest, A, quiet=False):
                                        "retired": [], "checks": [], "loop": "bash loop/loop.sh status", "needs_owner": "loop/state/NEEDS-OWNER.md", "work": "units"},
                             "versions": [], "before": []})
     kitroot = ["CLAUDE.md", "DECISIONS.md", "GENESIS.md", "loop", ".claude", ".git", ".gitignore"]
-    W("loop/kit.json", {"what": "This project's loop config. A lock: the owner changes it himself.", "project": name, "session": slug(name),
+    W("loop/kit.json", {"what": "This project's loop config. A lock: the owner changes it by hand.", "project": name, "session": slug(name),
                         "model": A.get("model") or "claude-opus-5-5", "effort": A.get("effort") or "xhigh",
                         "notify_title": A.get("notify_title") or name, "ntfy_topic": A.get("ntfy_topic") or DEFAULT_TOPIC,
                         "root_ok": kitroot + [e for e in (A.get("root_entries") or []) if e not in kitroot],
@@ -233,9 +252,9 @@ def create(dest, A, quiet=False):
     mem = json.loads((dest / "loop/qa/memory.json").read_text())
     mem["rules"] += [{"id": r["id"], "headline": r["headline"], "rule": r["rule"], "since": today, "from": name} for r in (A.get("rules") or [])]
     W("loop/qa/memory.json", mem)
-    # The index on the start screen (index.py): what exists, the mission ledger, his corrections. Entry 1 of the ledger is
-    # the mission in his own words where he gave them ("mission_words"), else the mission line.
-    W("loop/qa/index.json", {"what": "The project's index, printed at every start by loop/scripts/brief.py through index.py: project lines (each names a real file), the mission ledger (the owner's words, dated, never rewritten) and his corrections in force. Lean: replace or shorten, never only add.",
+    # The index on the start screen (index.py): what exists, the mission ledger, the owner's corrections. Entry 1 of the ledger is
+    # the mission in the owner's own words where given ("mission_words"), else the mission line.
+    W("loop/qa/index.json", {"what": "The project's index, printed at every start by loop/scripts/brief.py through index.py: project lines (each names a real file), the mission ledger (the owner's words, dated, never rewritten) and the owner's corrections in force. Lean: replace or shorten, never only add.",
                              "project": [
                                  {"says": "The instructions: the mission, how a unit runs, the hard rules and the doors.", "file": "CLAUDE.md"},
                                  {"says": "The genesis: what this is, why, for whom, what it is not, what is open, in the owner's words.", "file": "GENESIS.md"},
@@ -253,26 +272,123 @@ def create(dest, A, quiet=False):
         {"id": "decisions", "where": "DECISIONS.md", "answers": "what the owner decided, numbered"},
         {"id": "rules", "where": "loop/qa/memory.json", "answers": "how to work with the owner: the working rules in full"},
         {"id": "units", "where": "loop/qa/units", "answers": "every unit's promise and its result"},
-        {"id": "index", "where": "loop/qa/index.json", "answers": "what exists in the project, the mission ledger in the owner's words, his corrections in force"},
+        {"id": "index", "where": "loop/qa/index.json", "answers": "what exists in the project, the mission ledger in the owner's words, the owner's corrections in force"},
         {"id": "config", "where": "loop/kit.json", "answers": "model, effort, locked paths, caps, root entries"}]})
     for p in list((dest / ".claude" / "githooks").iterdir()) + list((dest / "loop" / "scripts").glob("*.sh")) + [dest / "loop" / "loop.sh"]:
         p.chmod(0o755)
+    return name, V
+
+
+def finish(dest, name, V, init, paths, quiet=False, said="created"):
+    """git (init unless the folder has a repo), the hooks, the map, road version 1, one commit of `paths`."""
     env = {**os.environ, "LOOP_OWNER": "1"}
     run = lambda *a: subprocess.run(list(a), cwd=dest, capture_output=True, text=True, env=env)
-    for cmd in (["git", "init", "-q", "-b", "main"], ["git", "config", "core.hooksPath", ".claude/githooks"],
+    for cmd in ([init] if init else []) + [["git", "config", "core.hooksPath", ".claude/githooks"],
                 [sys.executable, "-I", "loop/scripts/build_donemap.py"],
-                [sys.executable, "-I", "loop/scripts/roadmap.py", "change", V["MISSION"], "--date", today],
-                [sys.executable, "-I", "loop/scripts/roadmap.py", "--measure"], ["git", "add", "-A"],
-                ["git", "commit", "-q", "-m", f"{name[:60]}: created by loop-kit"]):
+                [sys.executable, "-I", "loop/scripts/roadmap.py", "change", V["MISSION"], "--date", V["DATE"]],
+                [sys.executable, "-I", "loop/scripts/roadmap.py", "--measure"], ["git", "add", *(["--", *paths] if paths != ["-A"] else paths)],
+                ["git", "commit", "-q", "-m", f"{name[:60]}: {said} by loop-kit"]]:
         r = run(*cmd)
         if r.returncode != 0:
             sys.exit(f"new_project: `{' '.join(cmd)}` failed in {dest}:\n{(r.stdout + r.stderr)[-1500:]}")
     brief = run(sys.executable, "-I", "loop/scripts/build_donemap.py", "--brief").stdout.strip()
     if not quiet:
-        print(f"new_project: created {dest}")
+        print(f"new_project: {said} {dest}")
         print(f"  map: {brief.splitlines()[0] if brief else '(no map)'}")
         print("  next: bash loop/scripts/selftest.sh · python3 -I loop/scripts/build_donemap.py --status · loop/loop.sh start (when the owner says)")
     return dest, brief
+
+
+FILLED = {"CLAUDE.md", "loop/HANDOFF.md", "DECISIONS.md", "loop/qa/memory.json"}  # filled at boot: compare by hand
+
+
+def upgrade(project, show_diff=False):
+    """List the kit's template files that differ from a running project, or that it lacks. Never writes."""
+    import difflib
+    project = Path(project).expanduser().resolve()
+    if not (project / "loop" / "kit.json").exists():
+        sys.exit(f"new_project: {project} is not a loop-kit project (no loop/kit.json)")
+    changed, new, filled = [], [], []
+    for f in sorted(TEMPLATE.rglob("*")):
+        if not f.is_file() or "__pycache__" in f.parts or f.name == ".DS_Store":
+            continue
+        rel = f.relative_to(TEMPLATE).as_posix().replace("dot-gitignore", ".gitignore")
+        mine = project / rel
+        if not mine.exists():
+            new.append(rel)
+        elif mine.read_bytes() != f.read_bytes():
+            (filled if rel in FILLED else changed).append(rel)
+            if show_diff and rel not in FILLED:
+                sys.stdout.writelines(difflib.unified_diff(mine.read_text(errors="replace").splitlines(True),
+                                      f.read_text(errors="replace").splitlines(True), f"project/{rel}", f"kit/{rel}"))
+    print(f"upgrade: {project} against the kit at {KIT} (nothing is changed)")
+    print(f"  changed in the kit ({len(changed)}):" + "".join(f"\n    {r}" for r in changed))
+    print(f"  new in the kit, missing here ({len(new)}):" + "".join(f"\n    {r}" for r in new))
+    print(f"  filled at boot, compare by hand ({len(filled)}): " + ", ".join(filled))
+    if changed or new:
+        print(f"  to see one: diff -u \"{project}/<file>\" \"{TEMPLATE}/<file>\"   (or --diff for all)")
+    return {"changed": changed, "new": new, "filled": filled}
+
+
+def kit_words(codespeak=False):
+    """The plain-words check (template/loop/scripts/plain.py) over the kit's own text: template, skill, README."""
+    sys.path.insert(0, str(TEMPLATE / "loop" / "scripts"))
+    import plain
+    files = [p for p in [*TEMPLATE.rglob("*"), *(KIT / "skill").rglob("*"), KIT / "README.md", KIT / "new_project.py"]
+             if p.is_file() and "__pycache__" not in p.parts and p.name != "plain.py"]  # plain.py names what it refuses
+    return [b.replace(str(KIT) + "/", "") for b in plain.check([str(p) for p in files], codespeak)]
+
+
+def up_check(dest):
+    import contextlib, io
+    quiet = lambda: contextlib.redirect_stdout(io.StringIO())
+    with quiet():
+        fresh = upgrade(dest)
+    (dest / "loop/scripts/lookup.py").write_text("# an older lookup\n")
+    (dest / "loop/scripts/plain.py").unlink()
+    snap = sorted((p.as_posix(), p.stat().st_mtime_ns) for p in dest.rglob("*") if p.is_file())
+    with quiet():
+        after = upgrade(dest)
+    same = snap == sorted((p.as_posix(), p.stat().st_mtime_ns) for p in dest.rglob("*") if p.is_file())
+    for rel in ("loop/scripts/lookup.py", "loop/scripts/plain.py"):  # put the sample back for the checks after this
+        shutil.copy2(TEMPLATE / rel, dest / rel)
+    return (fresh["changed"] == [] and fresh["new"] == [] and after["changed"] == ["loop/scripts/lookup.py"]
+            and after["new"] == ["loop/scripts/plain.py"] and same)
+
+
+def install_check(td):
+    """Run skill/install.sh with a fake HOME and a PATH that has everything but tmux; '' when it behaves."""
+    import shutil as sh
+    home, bin_ = td / "home", td / "bin"
+    bin_.mkdir()
+    for tool in ("bash", "python3", "git", "claude", "gh", "caffeinate", "uname", "mkdir"):
+        where = sh.which(tool)
+        if where:
+            (bin_ / tool).symlink_to(where)
+    r = subprocess.run(["bash", str(KIT / "skill" / "install.sh")], env={"HOME": str(home), "PATH": str(bin_)},
+                       capture_output=True, text=True)
+    skill = home / ".claude/skills/new-project/SKILL.md"
+    text = skill.read_text() if skill.exists() else ""
+    if not text or "<path to loop-kit>" in text or str(KIT) not in text:
+        return "the skill was not installed with the kit's path filled in"
+    if "MISSING  tmux" not in r.stdout or r.returncode != 1:
+        return "a missing tmux was not reported (exit %d)" % r.returncode
+    return ""
+
+
+SCREEN_WORDS = ["startable", "blocked", "flags", "red", "amber", "NOW", "working rules", "mission ledger",
+                "proposals from listening", "next without the owner", "phase", "step", "lines met"]
+
+
+def glossary_gaps(dest):
+    """Each word the start screen shows must be explained in README's word list."""
+    screen = subprocess.run([sys.executable, "-I", "loop/scripts/brief.py"], cwd=dest, capture_output=True, text=True).stdout.lower()
+    readme = (KIT / "README.md").read_text().lower()
+    words = readme.split("## words you will see")[1].split("\n## ")[0] if "## words you will see" in readme else ""
+    out = [f"the start screen shows '{w}' but the README word list does not explain it"
+           for w in SCREEN_WORDS if w.lower() in screen and w.lower().split()[-1] not in words]
+    return out + ([] if all(w.lower() in screen for w in ("startable", "mission ledger", "proposals from listening"))
+                  else ["the start screen no longer shows the words the list was made for"])
 
 
 def selftest():
@@ -291,7 +407,24 @@ def selftest():
         gen_ok = bool(gen and SAMPLE["genesis"]["words"][0] in gen and "What it is not" in gen
                       and SAMPLE["genesis"]["words"][0] in (dest / "loop" / "qa" / "index.json").read_text())
         print(f"genesis: {'ok · written from the interview, the owner' + chr(39) + 's words quoted, ledger entry 1 is them' if gen_ok else 'FAILED'}")
-        ok = r.returncode == 0 and road_ok and gen_ok
+        kept = subprocess.run(["git", "ls-files", "src/.gitkeep", "tests/.gitkeep"], cwd=dest, capture_output=True, text=True).stdout.split()
+        work_ok = kept == ["src/.gitkeep", "tests/.gitkeep"]
+        print(f"work folders: {'ok · src and tests made empty, each kept by a .gitkeep in the first commit' if work_ok else 'FAILED'}")
+        up_ok = up_check(dest)
+        print(f"upgrade: {'ok · a fresh project matches the kit; a changed and a missing tool are listed; nothing is written' if up_ok else 'FAILED'}")
+        inst = install_check(Path(td))
+        print(f"install: {'ok · the skill lands under a fake home with the path filled; tmux missing is reported' if not inst else 'FAILED: ' + inst}")
+        sys.path.insert(0, str(KIT / "skill"))
+        import adopt
+        (Path(td) / "answers.json").write_text(json.dumps(SAMPLE))
+        ad = adopt.check(KIT, Path(td) / "answers.json")
+        print(f"adopt: {'ok · code and its CLAUDE.md kept, the repo kept, one commit of only loop/, .claude/ and the missing root files; a clash is refused untouched' if not ad else 'FAILED: ' + ad}")
+        words = kit_words(codespeak=True) + glossary_gaps(dest)
+        words += [] if subprocess.run([sys.executable, "-I", "loop/scripts/plain.py", "check"], cwd=dest, capture_output=True).returncode == 0 else ["the sample project's own text fails plain.py check"]
+        print(f"plain words: {'ok · no persona name, the owner is you, no codespeak; every start-screen word is in the README list' if not words else 'FAILED'}")
+        for w in words[:10]:
+            print("  BAD", w)
+        ok = r.returncode == 0 and road_ok and gen_ok and not words and up_ok and not inst and not ad and work_ok
         print(f"new_project selftest: {'ALL GREEN' if ok else 'FAILED'} · sample map: {brief.splitlines()[0]}")
         return 0 if ok else 1
 
@@ -302,6 +435,9 @@ def main(argv):
         return 0
     if argv[0] == "--selftest":
         return selftest()
+    if argv[0] == "--upgrade" and len(argv) >= 2:
+        upgrade(argv[1], "--diff" in argv)
+        return 0
     if argv[0] == "--sample":
         print(json.dumps(SAMPLE, indent=1))
         return 0
@@ -310,7 +446,7 @@ def main(argv):
         return 2
     A = json.loads(Path(argv[argv.index("--answers") + 1]).expanduser().read_text())
     dest = next(a for i, a in enumerate(argv) if not a.startswith("--") and (i == 0 or argv[i - 1] != "--answers"))
-    create(dest, A)
+    create(dest, A, adopt="--adopt" in argv)
     return 0
 
 

@@ -4,10 +4,14 @@
 
 ## The two of us
 
-The owner feels: he can stand in any person's state and land close to the real thing. Claude computes: it extracts,
-enumerates and computes over a fixed structure, and fills any free slot with the most plausible word. So Claude asks
-The owner only for what only he can give, turns his answers into checkable lines, and tests them. How to talk to him: the
-working rules, `loop/qa/memory.json` (the start hook prints one line each; open the file for the full rule).
+You, the owner, feel: you can stand in any person's state and land close to the real thing. Claude computes: it
+extracts, enumerates and computes over a fixed structure, and fills any free slot with the most plausible word. So
+Claude asks you only for what only you can give, turns your answers into checkable lines, and tests them. How Claude
+talks to you: the working rules, `loop/qa/memory.json` (the start hook prints one line each; open the file for the full rule).
+**Codespeak** is text that looks plain but is made of the program's own names and shapes (a file key, a flag, a
+script name, `a · b · c` strings). Never write it to the owner. The test: would a friend who never saw the project
+understand it on first read? Name each part by what it does; a program name, when needed, goes in `backticks`.
+`python3 -I loop/scripts/plain.py check` catches the common cases.
 
 ## Three files answer three questions
 
@@ -27,31 +31,33 @@ working rules, `loop/qa/memory.json` (the start hook prints one line each; open 
 - **What did the owner decide:** `DECISIONS.md` (numbered, append-only).
 - **Where a new discovery goes:** a new step in `done-rules.json`, with checkable lines (adding is free).
 - **What exists, why, and what the owner corrected:** the index, `loop/qa/index.json`, printed at every start
-  (`index.py`): project lines (each names a real file), the mission ledger (his words, dated, never rewritten; the
-  newest on screen; a word of his that states the problem more sharply is a new entry: `index.py ledger add`), and his
-  corrections in force. Lean: a new line replaces or shortens one; the cap refuses growth.
-- **Learning across sessions:** at the end of a session with him, `listen.py gather` then `listen.py run`; each
-  proposal quotes him word for word and waits for his yes or no; a yes stays on the start screen until applied.
+  (`index.py`): project lines (each names a real file), the mission ledger (your words, dated, never rewritten; the
+  newest on screen; a word of yours that states the problem more sharply is a new entry: `index.py ledger add`), and
+  your corrections in force. Lean: a new line replaces or shortens one; the cap refuses growth.
+- **Learning across sessions:** at the end of a session with you, `listen.py gather` then `listen.py run`; each
+  proposal quotes you word for word and waits for your yes or no; a yes stays on the start screen until applied.
 
 **Questions before reading** (the owner, 2026-11-16: "we want you to eat super healthy whole foods"). For a task,
 `python3 -I loop/scripts/questions.py <task> [--step ID]` gives the questions in a fixed order, each with the one small
-piece that answers it: (a) what the project already holds, (b) what the owner decided, (c) what he said, (d) what is open.
-Stop when answered; never a whole file or a folder. Only (d) goes to him. A fact: `lookup.py find <words>`.
+piece that answers it: (a) what the project already holds, (b) what the owner decided, (c) what you said, (d) what is open.
+Stop when answered; never a whole file or a folder. Only (d) goes to you. A fact: `lookup.py find <words>`.
 
 ## A unit, start to finish (`go`)
 
-1. Take the map's next startable step (`build_donemap.py --next-agent` when nobody is watching; never a step that
-   needs the owner). A dirty tree means a session died mid-unit: finish that unit before starting another.
-2. Write the promise, `loop/qa/units/<unit>.json`: `step` (which names its phase), `what`, `plain` (three lines for
-   the owner: what changed, what he can look at, what is next), and checkable lines, among them
-   `build_donemap.py --advanced <step> N` (or `--filled <step>`) and `review_check.py check <unit>`. Then
-   `python3 -I loop/scripts/qa.py open <unit>`; from here the promise is frozen.
+1. `python3 -I loop/scripts/loop.py go`: it takes the map's next step that does not need the owner and drafts its
+   promise, `loop/qa/units/<unit>.json`, from the done map. Work in progress or a dirty tree comes first; it says so.
+2. Fix the draft: each DRAFT line made true (`what`; `plain`, three lines for the owner: what changed, what you can
+   look at, what is next), the checkable lines sharpened, keeping `build_donemap.py --advanced <step> N` (or
+   `--filled <step>`) and `review_check.py check <unit>`. Then `qa.py open <unit>`: the promise is frozen.
 3. Build and prove: tests with a planted truth; the evidence is a command and its output.
 4. `python3 -I loop/scripts/review_check.py run <unit> <files>`; answer every gap in `loop/qa/answers/<unit>.json`
-   (landed as a done-rules step id, or refused with a reason) and every overclaim (fixed or disputed).
+   (landed as the id of a step on the done map, or refused with a reason) and every overclaim (fixed or disputed).
 5. `python3 -I loop/scripts/qa.py close <unit>` (runs the promise, writes the result into the unit file, rebuilds
    the map); NOW replaced; ONE commit, subject at most 100 characters; buzz the owner once
    (`bash loop/scripts/notify.sh "<what landed>"`).
+
+A small change (a typo, a renamed label, one line of a fix): `loop.py small "<what>"` instead of steps 1 and 2;
+no review; the close still runs the project's checks; one commit.
 
 ## Hard rules
 
@@ -64,7 +70,7 @@ Stop when answered; never a whole file or a folder. Only (d) goes to him. A fact
 
 No one is watching: never ask, never wait. Anything only the owner can give goes to `loop/state/NEEDS-OWNER.md`; done and
 waits-on-the owner are computed by `loop/loop.sh` from the map. Transient trouble: exit; the loop retries. The owner's side:
-`loop/loop.sh start` · `stop` · `kill` · `status`. His words `fire loop`: run `loop/loop.sh start` at once, show its
+`loop/loop.sh start` · `stop` · `kill` · `status`. Your words `fire loop`: run `loop/loop.sh start` at once, show its
 output, then wait in the background for NEEDS-OWNER.md, DONE.md or the session dying, and report which. When the loop
 stops, `loop/scripts/dream.py` writes `loop/state/dream-<date>.md`: proposals for the owner, never rule changes.
 
@@ -73,4 +79,4 @@ stops, `loop/scripts/dream.py` writes `loop/state/dream-<date>.md`: proposals fo
 `.claude/settings.json` (the start hook, `loop/scripts/brief.py`; the tool guard, `loop/scripts/guard_tool.py`) and
 `.claude/githooks/` (`pre-commit`: `loop/scripts/locks.py`, `qa.py hook`; `commit-msg`: the subject cap; `pre-push`).
 Locked paths and caps: `loop/kit.json`. Every refusal is logged to `loop/state/catches.csv`. All selftests:
-`bash loop/scripts/selftest.sh`. The owner changes the locks himself.
+`bash loop/scripts/selftest.sh`. You, the owner, change the locks yourself.

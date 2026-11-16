@@ -3,13 +3,15 @@
 # promise line and writes the result INTO that same file; the unit lands in ONE commit.
 #
 #   qa.py open <unit>    where we are + is the promise valid (exit 2 if not); freezes it (loop/state/opened/)
-#   qa.py close <unit>   run the promise, write "result" into the unit file, rebuild the done map; exit 1 on a fail
+#   qa.py close <unit>   run the promise, write "result" into the unit file, rebuild the done map and the activity
+#                        page (activity.py); exit 1 on a fail
 #   qa.py hook           pre-commit: a staged unit is closed, and a committed unit never changes
 #   qa.py selftest       planted failures: no promise, a changed promise, a failing line, a vacuous promise
 #
 # Unit file: {"unit": "u1", "step": "<done-map step>", "what": "one sentence", "plain": [three lines for the owner: what changed,
-# what he can look at, what is next], "promise": [{"what": "...", <check>}]}. The step names its phase on the roadmap.
-# The promise must hold the lines kit.json "promise_requires" names (default: build_donemap --advanced/--filled on
+# what you can look at, what is next], "promise": [{"what": "...", <check>}]}. The step names its phase on the roadmap.
+# A small change ("kind": "small", draft.py small) has no step; its promise must hold the kit.json small_checks line
+# (default `bash loop/scripts/selftest.sh`), and close runs it like any other line. Otherwise the promise must hold the lines kit.json "promise_requires" names (default: build_donemap --advanced/--filled on
 # its step, and review_check.py check <unit>). Checks: file / cmd / json / grep / git (kit.py).
 import datetime as dt
 import hashlib
@@ -24,6 +26,7 @@ sys.path.insert(0, str(HERE))
 import kit  # noqa: E402
 import build_donemap as BM  # noqa: E402
 
+SMALL_CHECKS = "bash loop/scripts/selftest.sh"  # the light track's one required line (kit.json small_checks)
 REQUIRES = [r"build_donemap\.py --(advanced|filled) {step}\b", r"review_check\.py check {unit}\b"]
 MAP_LINE = r"build_donemap\.py --(advanced|filled) "
 
@@ -51,7 +54,8 @@ def validate(root, unit, u):
     if u.get("unit") != unit:
         out.append(f"'unit' must be {unit!r}")
     steps = {s["id"] for s in json.loads((Path(root) / "loop" / "qa" / "done-rules.json").read_text())["steps"]}
-    if u.get("step") not in steps:
+    small = u.get("kind") == "small"  # the light track (draft.py small): no step, the checks line instead
+    if not small and u.get("step") not in steps:
         out.append(f"'step' must be a done-map step ({', '.join(sorted(steps))})")
     if not isinstance(u.get("what"), str) or len(u.get("what", "")) < 12:
         out.append("'what': one sentence on what this unit makes")
@@ -64,9 +68,11 @@ def validate(root, unit, u):
             out.append(f"promise[{i}]: no 'what' (the plain words for the line)")
     pl = u.get("plain")  # The owner, 2026-11-13: "I want as a rule everything that you do, to be human readable for me"
     if not (isinstance(pl, list) and len(pl) == 3 and all(isinstance(x, str) and len(x.strip()) >= 12 for x in pl)):
-        out.append("'plain': three plain lines for the owner: what changed, what he can look at, what is next")
+        out.append("'plain': three plain lines for the owner: what changed, what you can look at, what is next")
+    if "DRAFT" in json.dumps([u.get("what"), pl, P]):  # draft.py marks what only the session can say
+        out.append("the promise still says DRAFT: make each DRAFT line true, then open")
     cmds = " \n ".join(ln.get("cmd", "") for ln in P if isinstance(ln, dict))
-    for pat in kit.conf(root).get("promise_requires", REQUIRES):
+    for pat in [re.escape(kit.conf(root).get("small_checks", SMALL_CHECKS))] if small else kit.conf(root).get("promise_requires", REQUIRES):
         rx = pat.replace("{step}", re.escape(str(u.get("step")))).replace("{unit}", re.escape(unit))
         if not re.search(rx, cmds):
             out.append(f"the promise needs a cmd line matching /{rx}/")
@@ -115,8 +121,8 @@ def open_(root, unit):
         print(f"qa open {unit}: REFUSED · the promise changed since it was opened; a changed promise is a new unit")
         kit.catch("qa:close-promise-changed", f"{unit}: re-open with a changed promise", unit, root)
         return 2
-    step = next(s for s in D["steps"] if s["id"] == u["step"])
-    if step["waits_open"]:
+    step = next((s for s in D["steps"] if s["id"] == u.get("step")), None)
+    if step and step["waits_open"]:
         print(f"qa open {unit}: REFUSED · step {u['step']} waits on {', '.join(step['waits_open'])}")
         kit.catch("map:require", f"{u['step']} waits on {', '.join(step['waits_open'])}", unit, root)
         return 2
@@ -130,7 +136,7 @@ def open_(root, unit):
         _, head = git(root, "rev-parse", "--short", "HEAD")
         of.write_text(json.dumps({"unit": unit, "sha": sha, "at": dt.datetime.now().isoformat(timespec="seconds"), "head": head.strip()}) + "\n")
     (Path(root) / "loop" / "state" / "current-unit").write_text(unit + "\n")
-    print(f"qa open {unit}: ok · step {u['step']} · {len(u['promise'])} promise lines, frozen from now on")
+    print(f"qa open {unit}: ok · {'step ' + u['step'] if step else 'a small change'} · {len(u['promise'])} promise lines, frozen from now on")
     return 0
 
 
@@ -163,6 +169,8 @@ def close_(root, unit):
     if (Path(root) / "loop" / "roadmap.json").exists():  # the dashboard's health row for today, at every close
         subprocess.run([sys.executable, "-I", str(HERE / "roadmap.py"), "--measure"], cwd=root, capture_output=True, text=True,
                        env={**__import__("os").environ, "LOOP_ROOT": str(root)})
+    subprocess.run([sys.executable, "-I", str(HERE / "activity.py")], cwd=root, capture_output=True,  # the activity page
+                   env={**__import__("os").environ, "LOOP_ROOT": str(root)})
     print(f"qa close {unit}: {overall} · {passed}/{len(rows)}")
     for r in rows:
         print(f"  {'ok  ' if r['ok'] else 'FAIL'}  {r['what']} · {r['saw']}")
@@ -240,7 +248,7 @@ def selftest():
         sh("git", "-c", "user.email=t@t", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init")
         maps = lambda n_: {"what": "the step advanced", "cmd": f"python3 -I loop/scripts/build_donemap.py --advanced s1 {n_}"}
         rev = lambda u: {"what": "the review is answered", "cmd": f"python3 -I loop/scripts/review_check.py check {u}"}
-        PL = ["what changed, in plain words", "what he can look at, in plain words", "what is next, in plain words"]
+        PL = ["what changed, in plain words", "what you can look at, in plain words", "what is next, in plain words"]
         write = lambda u, body: (root / "loop" / "qa" / "units" / f"{u}.json").write_text(json.dumps({"plain": PL, **body}))
 
         def run(cmd, unit):

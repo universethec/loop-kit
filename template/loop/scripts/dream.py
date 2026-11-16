@@ -130,7 +130,7 @@ def scan(files):
                         kind, key = "permission", (f"needs approval: {part.group(1)}" if part else norm(text))
                     elif re.search(r"hook error|guard: refused|BLOCKED|refused", text):
                         tail = text.split("refused.", 1)[-1] if "refused." in text else text
-                        kind, key = "refused", norm(tail.split(" the owner can do it himself")[0])
+                        kind, key = "refused", norm(tail.split(" you, the owner, can do it yourself")[0])
                     else:
                         kind, key = "error", norm(text)
                     e = found[kind][key]
@@ -242,7 +242,7 @@ def selftest():
         tr = lambda i, text: json.dumps({"type": "user", "message": {"role": "user", "content": [{"type": "tool_result", "tool_use_id": i, "content": text, "is_error": True}]}})
         (tdir / f"{sid}.jsonl").write_text("\n".join([
             tu("a", "Bash", {"command": "git push origin main"}),
-            tr("a", "PreToolUse:Bash hook error: [python3 guard_tool.py]: guard: refused. Never git push (CLAUDE.md, hard rules). The owner can do it himself."),
+            tr("a", "PreToolUse:Bash hook error: [python3 guard_tool.py]: guard: refused. Never git push (CLAUDE.md, hard rules). you, the owner, can do it yourself."),
             tu("b", "WebSearch", {"query": "x"}),
             tr("b", "Claude requested permissions to use WebSearch, but you haven't granted it yet."),
             tu("c", "Bash", {"command": "npm test"}), tr("c", "Exit code 1\nnpm ERR! missing script: test"),

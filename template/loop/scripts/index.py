@@ -6,14 +6,14 @@
 #
 #   index.py                                         print it (brief.py prints it at every start)
 #   index.py ledger [N]                              one ledger entry (default: the newest)
-#   index.py ledger add DATE "his words" [--sharper "..."] [--open "..."]   a new entry, his words exactly; never an edit
-#   index.py correct DATE "his words" "the rule a session follows"        a correction in force
+#   index.py ledger add DATE "your words" [--sharper "..."] [--open "..."]   a new entry, the owner's words exactly; never an edit
+#   index.py correct DATE "your words" "the rule a session follows"        a correction in force
 #   index.py line "what exists, one sentence" FILE                         a project line, its file must exist
 #   index.py --check                                 every line's file exists, the ledger is numbered and never rewritten
 #   index.py selftest                                planted truths
 #
 # A LEDGER ENTRY IS NEVER REWRITTEN: --check compares every entry with the last commit's and refuses a change or a
-# removal. The words are his; 'sharper' is Claude's wording of the problem, his to correct; 'open' names what is open.
+# removal. The words are the owner's; 'sharper' is Claude's wording of the problem, the owner's to correct; 'open' names what is open.
 import json
 import subprocess
 import sys
@@ -40,7 +40,7 @@ def save(I, root=None):
 
 
 def dreams(root=None):
-    """(proposals waiting for the owner, his yeses not yet applied), read off loop/state/dreams (listen.py)."""
+    """(proposals waiting for the owner, the owner's yeses not yet applied), read off loop/state/dreams (listen.py)."""
     d = Path(root or kit.ROOT) / "loop" / "state" / "dreams"
     w = y = 0
     for f in d.glob("proposals-*.json") if d.exists() else []:
@@ -62,7 +62,7 @@ def lines(I, root=None):
         L.append(f"--- MISSION LEDGER, entry {e['n']} of {len(led)} ({e['date']}; any entry: index.py ledger N)")
         L.append(f"The owner: \"{e['words']}\"")
         if e.get("sharper"):
-            L.append(f"Sharper (Claude's wording, his to correct): {e['sharper']}")
+            L.append(f"Sharper (Claude's wording, yours to correct): {e['sharper']}")
         if e.get("open"):
             L.append(f"Open: {e['open']}")
     if I.get("corrections"):
@@ -70,8 +70,8 @@ def lines(I, root=None):
         L += [f"- {c['date']} \"{c['words']}\" → {c['rule']}" for c in I["corrections"]]
     w, y = dreams(root)
     if y:
-        L.append(f"Dreams: {y} of the owner's yeses not yet applied: apply them first, one commit, then mark each applied (listen.py show).")
-    L.append(f"Dreams: {w} proposal(s) wait for the owner (listen.py show)." if w else "Dreams: none waiting (at the end of a session with him: listen.py gather, then listen.py run).")
+        L.append(f"Proposals from listening: {y} of the owner's yeses not yet applied: apply them first, one commit, then mark each applied (listen.py show).")
+    L.append(f"Proposals from listening: {w} wait for the owner (listen.py show)." if w else "Proposals from listening: none waiting (at the end of a session with the owner: listen.py gather, then listen.py run).")
     return L
 
 
@@ -103,7 +103,7 @@ def problems(I, root=None, before=None):
             bad.append(f"ledger entry {old.get('n')} was rewritten: an entry is never rewritten; a new one says what changed")
     for c in I.get("corrections", []):
         if not c.get("words") or not c.get("rule"):
-            bad.append("a correction needs his words and the rule a session follows")
+            bad.append("a correction needs the owner's words and the rule a session follows")
     if len(lines(I, root)) > CAP:
         bad.append(f"the index prints {len(lines(I, root))} lines, over its cap of {CAP}: replace or shorten, never only add")
     return bad

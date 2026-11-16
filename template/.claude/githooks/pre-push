@@ -8,7 +8,7 @@
 # Layers, outermost first: settings.json denies Bash(git push:*); loop/scripts/guard_tool.py refuses any push
 # command and logs it; this hook refuses at git's own door.
 #
-# The owner changes this file himself (it is a lock: the guard and locks.py refuse a session's edit).
+# The owner changes this file by hand (it is a lock: the guard and locks.py refuse a session's edit).
 if [ "${LOOP_AUTONOMOUS:-0}" = "1" ]; then
   echo "" >&2
   echo "  push BLOCKED — autonomous mode is active (LOOP_AUTONOMOUS=1)." >&2

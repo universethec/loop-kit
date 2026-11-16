@@ -19,8 +19,8 @@
 #
 #   roadmap.py                         write the page               roadmap.py --measure   add today's health row, write the page
 #   roadmap.py --check                 exit 1 on any problem         roadmap.py --status    one line: version, phase, next step
-#   roadmap.py change "his words" [--date D]                         a new version of the road, with his reason
-#   roadmap.py --sign DATE "his words" [roadmap|dashboard]           the owner's sign-off (he runs it himself)
+#   roadmap.py change "the owner's words" [--date D]                         a new version of the road, with the owner's reason
+#   roadmap.py --sign DATE "the owner's words" [roadmap|dashboard]           the owner's sign-off (the owner runs it by hand)
 #   roadmap.py selftest                the planted truths            (run each as python3 -I loop/scripts/roadmap.py ...)
 import datetime as dt
 import glob
@@ -143,7 +143,7 @@ def problems(R, D):
     out += [f"mark {i!r} is used twice" for i in sorted({i for i in mk if mk.count(i) > 1})]
     out += [f"mark {m['id']!r} has no proof" for p in R.get("phases", []) for m in p.get("marks", []) if not m.get("proof")]
     out += [f"a title names {k!r}, which is neither a phase nor a step" for k in R.get("titles", {}) if k not in set(ph_ids) | steps_on_map]
-    if R.get("titles"):  # once a project names things for the owner, every new phase and step needs his kind of name before a close
+    if R.get("titles"):  # once a project names things for the owner, every new phase and step needs the owner's kind of name before a close
         out += [f"'{k}' has no plain title for the owner: add one to 'titles'" for k in list(ph_ids) + sorted(steps_on_map) if k not in R["titles"]]
     in_arcs = [i for a in R.get("arcs", []) for i in a["phases"]]
     if R.get("arcs"):
@@ -605,7 +605,7 @@ def selftest():
             (T / "loose" / f"l{i}").write_text("x")
         return Cfg(T)
 
-    HIS = lambda w: w == "his words, typed by him"
+    OWNERS = lambda w: w == "the owner's words, typed by the owner"
     with tempfile.TemporaryDirectory() as td:
         cfg = setup(td)
         R, C, pg = build(cfg)
@@ -641,15 +641,15 @@ def selftest():
              "NAMES FOR THE OWNER: their titles replace the map's names on the page")
         must(any("neither a phase nor a step" in x for x in problems(dict(R, titles={"zz": "x"}), MAP)), "a title for nothing is refused")
         must(any("'c1' has no plain title" in x for x in problems(dict(R, titles={"b2": "Ship the widget"}), MAP)), "a new step without a plain title is refused")
-        must(C["waiting"] == ["step b2"], "a startable step that needs the owner is listed as waiting on him")
+        must(C["waiting"] == ["step b2"], "a startable step that needs the owner is listed as waiting on the owner")
         must(any("no version" in x for x in check(cfg)) and any("changed without your words" in f[1] for f in C["flags"]), "a road with no version is refused and flagged")
         must(any("not been measured" in f[1] for f in C["flags"]), "an unmeasured project says so")
         # NO SILENT CHANGE
-        must("not found among what the owner typed" in refused(lambda: change(cfg, "words he never typed", "2026-11-13", said=HIS)), "a change without his words is refused")
-        must("yyyy-mm-dd" in refused(lambda: change(cfg, "his words, typed by him", "13 Nov", said=HIS)), "a version with a bad date is refused")
-        v = change(cfg, "his words, typed by him", "2026-11-13", said=HIS)
-        must(v["v"] == 1 and "the road set" in v["changed"][0], "version 1 is written with his words and what it set")
-        must("nothing to version" in refused(lambda: change(cfg, "his words, typed by him", "2026-11-14", said=HIS)), "a version that changes nothing is refused")
+        must("not found among what the owner typed" in refused(lambda: change(cfg, "words the owner never typed", "2026-11-13", said=OWNERS)), "a change without the owner's words is refused")
+        must("yyyy-mm-dd" in refused(lambda: change(cfg, "the owner's words, typed by the owner", "13 Nov", said=OWNERS)), "a version with a bad date is refused")
+        v = change(cfg, "the owner's words, typed by the owner", "2026-11-13", said=OWNERS)
+        must(v["v"] == 1 and "the road set" in v["changed"][0], "version 1 is written with the owner's words and what it set")
+        must("nothing to version" in refused(lambda: change(cfg, "the owner's words, typed by the owner", "2026-11-14", said=OWNERS)), "a version that changes nothing is refused")
         R = J(cfg.road)
         R["phases"][1]["name"] = "Second, renamed"
         R["health"]["instructions"][0]["cap"] = 4
@@ -658,14 +658,14 @@ def selftest():
         R["phases"][1]["steps"].remove("b2")
         R["phases"][2]["steps"].insert(0, "b2")
         cfg.road.write_text(json.dumps(R))
-        v2 = change(cfg, "his words, typed by him", "2026-11-14", said=HIS)
+        v2 = change(cfg, "the owner's words, typed by the owner", "2026-11-14", said=OWNERS)
         must(v2["v"] == 2 and "phase renamed: Second → Second, renamed" in v2["changed"] and "step 'b2' moved: Second → Third" in v2["changed"]
              and any("health" in c for c in v2["changed"]), "version 2 names the rename, the move and the cap it carries")
         R = J(cfg.road)
         R["health"]["instructions"][0]["cap"] = 3
         R["phases"][0]["notes"] = ["a free note"]
         cfg.road.write_text(json.dumps(R))
-        change(cfg, "his words, typed by him", "2026-11-14", said=HIS)
+        change(cfg, "the owner's words, typed by the owner", "2026-11-14", said=OWNERS)
         # A KNOWN PROJECT GIVES KNOWN GAUGES
         row = measure(cfg, "2026-11-14")
         must(row["engine"] == {"files": 1, "lines": 10} and row["helpers"] == {"files": 3, "lines": 10}, "the code is counted, tests left out")
@@ -703,13 +703,13 @@ def selftest():
         must(any("does not match its fingerprint" in x for x in check(cfg)), "a kept version rewritten by hand is caught")
     with tempfile.TemporaryDirectory() as td:
         cfg = setup(td)
-        must("not signed" in refused(lambda: sign(cfg, "2026-11-13", "his words, typed by him", said=HIS)), "no sign-off on a road with no version")
-        change(cfg, "his words, typed by him", "2026-11-13", said=HIS)
+        must("not signed" in refused(lambda: sign(cfg, "2026-11-13", "the owner's words, typed by the owner", said=OWNERS)), "no sign-off on a road with no version")
+        change(cfg, "the owner's words, typed by the owner", "2026-11-13", said=OWNERS)
         write(cfg)
-        must("not signed" in refused(lambda: sign(cfg, "2026-11-13", "words he never typed", said=HIS)), "a sign-off in words he never typed is refused")
-        out = sign(cfg, "2026-11-13", "his words, typed by him", said=HIS, name="dashboard")
+        must("not signed" in refused(lambda: sign(cfg, "2026-11-13", "words the owner never typed", said=OWNERS)), "a sign-off in words the owner never typed is refused")
+        out = sign(cfg, "2026-11-13", "the owner's words, typed by the owner", said=OWNERS, name="dashboard")
         must(out.name == "owner-dashboard-2026-11-13.json" and J(out)["version"] == 1, "a sign-off names what it signs and the version")
-        must("never written over" in refused(lambda: sign(cfg, "2026-11-14", "his words, typed by him", said=HIS, name="dashboard")), "a second sign-off is refused")
+        must("never written over" in refused(lambda: sign(cfg, "2026-11-14", "the owner's words, typed by the owner", said=OWNERS, name="dashboard")), "a second sign-off is refused")
         R = J(cfg.road)
         R["phases"][0]["marks"][0]["proof"] = [{"file": "never.txt"}]
         R["versions"][0]["words_checked"] = False
@@ -752,9 +752,9 @@ def check(cfg):
     if out:
         return out
     if not R.get("versions"):
-        out.append("the road has no version yet: run `roadmap.py change \"<his words>\"`")
+        out.append("the road has no version yet: run `roadmap.py change \"<the owner's words>\"`")
     elif R["versions"][-1]["fingerprint"] != fingerprint(road_of(R)):
-        out.append("the road changed without a new version: run `roadmap.py change \"<his words>\"`")
+        out.append("the road changed without a new version: run `roadmap.py change \"<the owner's words>\"`")
     for i, v in enumerate(R.get("versions", [])):
         if v.get("v") != i + 1:
             out.append(f"version {i + 1} is numbered {v.get('v')}")
@@ -771,7 +771,7 @@ def change(cfg, words_, date=None, said=None):
     lines = [w.strip() for w in words_.split(";") if w.strip()]
     said = said if said is not None else said_checker()
     if not lines:
-        fail("no change without his words: give the reason the owner typed")
+        fail("no change without the owner's words: give the reason the owner typed")
     if said is not None and not all(said(w) for w in lines):
         fail("not changed: those words are not found among what the owner typed in this project")
     bad = problems(R, J(cfg.map))
@@ -792,7 +792,7 @@ def change(cfg, words_, date=None, said=None):
 
 
 SIGNS = {"roadmap": "The owner's sign-off on the roadmap: this road, on this page, is the one road of the project from now on; it changes only through a "
-                    "numbered version carrying his words. It rules no part of the engine and does not say the phases are right.",
+                    "numbered version carrying the owner's words. It rules no part of the engine and does not say the phases are right.",
          "dashboard": "The owner's sign-off on the dashboard: this page is how the project's health is watched from now on, every number from the dated "
                       "measurement written at each close. It does not say the project is pristine; it says this is how we will see whether it is."}
 

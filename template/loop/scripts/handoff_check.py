@@ -34,7 +34,7 @@ def now_problems(text, cap=20):
         out.append(f"NOW holds {len(where)} 'Where we are' entries; it holds exactly one")
     if len(lines) > cap:
         out.append(f"NOW is {len(lines)} lines; the cap is {cap}")
-    # the NOW section itself (the owner, 2026-11-13, his yes to 'NOW capped at five lines'): open notes go on the roadmap
+    # the NOW section itself (the owner, 2026-11-13, the owner's yes to 'NOW capped at five lines'): open notes go on the roadmap
     head = next((i for i, x in enumerate(lines) if x.startswith("## NOW")), None)
     body = [x for x in lines[head + 1:] if x.strip()] if head is not None else []
     if len(body) > NOW_LINES:

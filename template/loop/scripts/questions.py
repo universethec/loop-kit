@@ -11,7 +11,7 @@
 #   questions.py selftest                   planted truths
 #
 # THE ORDER IS THE RULE: (a) what the project already holds (the done map's met lines, the resources), (b) what the owner
-# decided (DECISIONS.md), (c) what he said (the road's versions, in his words), (d) what is still open (the phase notes,
+# decided (DECISIONS.md), (c) what the owner said (the road's versions, in the owner's words), (d) what is still open (the phase notes,
 # the step's unmet lines). Only (d) may go to the owner. A target is never chosen from words alone: they guess badly.
 # Nothing here writes. It cannot judge whether a question is the right one; that stays the session's. Stdlib only.
 import json
@@ -91,7 +91,7 @@ def questions(task, F, step_id=None):
     D = decisions(F["decisions"])
     hit = [D[i] for i in rank([ln for _, ln in D], ws)[:4]]
     out += [f"   {ln}" for _, ln in hit] or ["   no decision holds the words"]
-    out.append("c. What did he say about it? (the road's versions, his words)")
+    out.append("c. What did the owner say about it? (the road's versions, the owner's words)")
     V = F["road"].get("versions", [])
     vt = [" ".join(v.get("reason", [])) if isinstance(v.get("reason"), list) else str(v.get("reason", "")) for v in V]
     out += [f"   v{V[i]['v']} ({V[i].get('date')}): {vt[i][:220]}" for i in rank(vt, ws)[:2]] or ["   no version of the road holds the words"]

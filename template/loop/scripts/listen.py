@@ -1,20 +1,20 @@
 #!/usr/bin/env python3
 # Listening: dreaming from the owner's own words (ported from harbingr-v2, 2026-11-16, the owner: "dreaming with self-learning,
-# without bloating"; "I want you to become intelligent from session to session"). A pass after a session with him that
+# without bloating"; "I want you to become intelligent from session to session"). A pass after a session with the owner that
 # reads only the messages the harness marks as typed by a person, and proposes changes to the project's index
 # (loop/qa/index.json: project lines, ledger, corrections) and to the working rules (loop/qa/memory.json). Every
-# proposal must quote him word for word, or it is thrown away. It never changes a file in git: the owner says yes or no;
+# proposal must quote the owner word for word, or it is thrown away. It never changes a file in git: the owner says yes or no;
 # a yes stays on the start screen (index.py) until the commit that applies it is marked with `applied`.
 # (dream.py is the other pass: it prunes gates and reads refused tool calls after the unattended loop.)
 #
-#   listen.py gather [--sessions N]    his typed words since the last pass (or the last N sessions) -> a packet
+#   listen.py gather [--sessions N]    the owner's typed words since the last pass (or the last N sessions) -> a packet
 #   listen.py run                      one read-only `claude -p` on Opus over the packet, the index and the rules
 #   listen.py show                     the proposals waiting, in plain words
-#   listen.py answer ID yes|no "<his words>"   records his answer
+#   listen.py answer ID yes|no "<the owner's words>"   records the owner's answer
 #   listen.py applied ID <commit>      marks a yes applied; until then the start screen asks for it
 #   listen.py selftest                 planted truths
 #
-# WHERE IT WRITES: loop/state/dreams/ only (git-ignored). WHAT IT COSTS: one Opus run on his subscription per `run`.
+# WHERE IT WRITES: loop/state/dreams/ only (git-ignored). WHAT IT COSTS: one Opus run on the owner's subscription per `run`.
 import json
 import os
 import re
@@ -28,7 +28,7 @@ ROOT = HERE.parent.parent
 OUT = ROOT / "loop" / "state" / "dreams"
 TRANSCRIPTS = Path(os.path.expanduser("~/.claude/projects")) / ("-" + str(ROOT).strip("/").replace("/", "-").replace(" ", "-"))
 RULES = ROOT / "loop" / "qa" / "memory.json"
-BEFORE = 700          # characters of what Claude said just before each of his messages
+BEFORE = 700          # characters of what Claude said just before each of the owner's messages
 BUDGET = 160_000      # characters of the packet handed to the dreamer
 KINDS = ("project-line", "ledger", "correction", "working-rule", "stale")
 
@@ -43,7 +43,7 @@ Find what should change so that the NEXT session is less blind and makes fewer o
 - ledger: words of the owner's that state the mission or the open problem more sharply than the ledger's newest entry.
 - project-line: something that exists in the project that the index's project lines lack or get wrong.
 - working-rule: a pattern in how the owner wants to be worked with that no current rule covers.
-- stale: an index line or a rule that his words show is out of date.
+- stale: an index line or a rule that the owner's words show is out of date.
 Keep only patterns that matter. Prefer few, sharp proposals over many. Never propose what the index or rules already say.
 
 Every proposal MUST quote the owner word for word from the packet (copy exactly; a quote not found verbatim is thrown away).
@@ -76,7 +76,7 @@ def text_of(content):
 
 
 def his_words(d):
-    """His own typed message, or None. A message counts only if the harness marks it as typed by a person; where an
+    """The owner's own typed message, or None. A message counts only if the harness marks it as typed by a person; where an
     older transcript carries no such mark, anything that is a tool result, a system note, a hook's feedback, a task
     notification or another agent's message is left out."""
     if d.get("type") != "user" or d.get("isMeta"):
@@ -86,7 +86,7 @@ def his_words(d):
         return None
     origin = d.get("origin")
     # Only a message the harness marks as typed by a person. A transcript with no such marks (older ones, and the
-    # headless `claude -p` helpers whose prompt is a user turn) gives nothing: a helper's brief must never pass as his.
+    # headless `claude -p` helpers whose prompt is a user turn) gives nothing: a helper's brief must never pass as the owner's.
     return t.strip() if isinstance(origin, dict) and origin.get("kind") == "human" else None
 
 
@@ -144,7 +144,7 @@ def gather(sessions=None):
     stamp = now()
     P = {"made": stamp, "sessions": packet}
     (OUT / f"packet-{stamp}.json").write_text(json.dumps(P, indent=1, ensure_ascii=False) + "\n")
-    print(f"listen gather: {len(packet)} sessions, {sum(len(s['turns']) for s in packet)} of his messages, {size:,} characters → loop/state/dreams/packet-{stamp}.json")
+    print(f"listen gather: {len(packet)} sessions, {sum(len(s['turns']) for s in packet)} of the owner's messages, {size:,} characters → loop/state/dreams/packet-{stamp}.json")
     return P
 
 
@@ -153,7 +153,7 @@ def flat(s):
 
 
 def verified(proposals, packet):
-    """Keep a proposal only if it is well formed and every quote stands word for word in his messages of the packet."""
+    """Keep a proposal only if it is well formed and every quote stands word for word in the owner's messages of the packet."""
     said = {s["session"]: flat(" \n ".join(t["owner"] for t in s["turns"])) for s in packet["sessions"]}
     kept, thrown = [], []
     for p in proposals:
@@ -184,7 +184,7 @@ def run():
         p["id"] = f"{stamp}-{i}"
         p["answer"] = None
     out = {"made": stamp, "by": "claude -p --model opus, no tools", "sessions": [s["session"] for s in P["sessions"]], "proposals": kept,
-           "thrown_away": [{"kind": p.get("kind"), "change": p.get("change"), "why": "a quote does not stand word for word in his messages, or the proposal is malformed"} for p in thrown]}
+           "thrown_away": [{"kind": p.get("kind"), "change": p.get("change"), "why": "a quote does not stand word for word in the owner's messages, or the proposal is malformed"} for p in thrown]}
     (OUT / f"proposals-{stamp}.json").write_text(json.dumps(out, indent=1, ensure_ascii=False) + "\n")
     (OUT / "last.json").write_text(json.dumps({"until": stamp}) + "\n")
     print(f"listen run: {len(kept)} proposals kept, {len(thrown)} thrown away → loop/state/dreams/proposals-{stamp}.json")
@@ -206,7 +206,7 @@ def show():
         return 0
     for _, _, p in waiting:
         print(f"[{p['id']}] {p['kind']} · seen in {p.get('sessions_seen', '?')} session(s)\n  change: {p['change']}"
-              + (f"\n  replaces: {p['replaces']}" if p.get("replaces") else "") + f"\n  why: {p['why']}\n  his words: "
+              + (f"\n  replaces: {p['replaces']}" if p.get("replaces") else "") + f"\n  why: {p['why']}\n  the owner's words: "
               + " | ".join(f"\"{q['words']}\"" for q in p["quotes"]) + f"\n  my pick: {p.get('pick', '')}\n")
     print(f"{len(waiting)} waiting. Answer each: python3 -I loop/scripts/listen.py answer ID yes|no \"<your words>\"")
     return 0
@@ -248,18 +248,18 @@ def selftest():
         {"type": "user", "origin": {"kind": "task-notification"}, "message": {"content": "<task-notification>x"}},
         {"type": "user", "message": {"content": [{"type": "tool_result", "content": "ok"}]}},
         {"type": "user", "message": {"content": "a helper's brief with no mark of who typed it"}},
-        {"type": "user", "message": {"content": "<system-reminder>not his</system-reminder>"}},
+        {"type": "user", "message": {"content": "<system-reminder>not the owner's</system-reminder>"}},
     ]]
     T = session_turns(lines)
-    must([t["owner"] for t in T] == ["we literally have this built"], f"his words were not told apart from the rest: {[t['owner'] for t in T]}")
-    must(T[0]["claude_before"] == "Shall I ask you about the stake?", "what Claude said before his message was lost")
+    must([t["owner"] for t in T] == ["we literally have this built"], f"the owner's words were not told apart from the rest: {[t['owner'] for t in T]}")
+    must(T[0]["claude_before"] == "Shall I ask you about the stake?", "what Claude said before the owner's message was lost")
     packet = {"sessions": [{"session": "s1", "turns": T}]}
     good = {"kind": "correction", "change": "read first", "quotes": [{"session": "s1", "words": "we literally have  this built"}]}
     invented = {"kind": "correction", "change": "x", "quotes": [{"session": "s1", "words": "you are always right"}]}
     wrong_session = {"kind": "correction", "change": "x", "quotes": [{"session": "s2", "words": "we literally have this built"}]}
     no_kind = {"kind": "rewrite everything", "change": "x", "quotes": [{"session": "s1", "words": "we literally have this built"}]}
     kept, thrown = verified([good, invented, wrong_session, no_kind], packet)
-    must(kept == [good], "a proposal with words he never typed, or the wrong session, or no kind, was kept; or the true one was thrown")
+    must(kept == [good], "a proposal with words the owner never typed, or the wrong session, or no kind, was kept; or the true one was thrown")
     must(len(thrown) == 3, "the thrown-away proposals were not all counted")
     src = Path(__file__).read_text()
     writes = re.findall(r"\(OUT / [^)]*\)\.write_text|f\.write_text|OUT\.mkdir", src)

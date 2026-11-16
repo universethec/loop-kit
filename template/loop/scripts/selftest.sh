@@ -5,13 +5,13 @@
 #   bash loop/scripts/selftest.sh        exit 0 only when every control is green; one line per gate
 #
 # Gates: build_donemap (--next-agent 0/2/3, --brief), qa (promise), review_check, guard_tool, locks (incl. subject
-# cap), handoff_check (dirty tree), dream (pruning + lessons), lookup, questions, index, listen. Then end to end: the commit-msg hook on a
+# cap), handoff_check (dirty tree), dream (pruning + lessons), lookup, questions, index, listen, plain (plain words), loop (the next action), draft (a promise drafted), recover (abandon, redo), activity (the page), growth (archive, too big, decisions, caps). Then end to end: the commit-msg hook on a
 # 101-char and a 100-char subject, the guard hook on stdin (push, a lock, a normal edit), and the briefing size.
 # Planted catches go to a temp file (LOOP_CATCHES), never the project's own catch log.
 # The pre-commit hook runs this whenever a file under loop/scripts/ is staged.
 cd "$(dirname "$0")/../.." || exit 1
 fail=0
-for s in build_donemap qa review_check guard_tool locks handoff_check dream lookup roadmap questions index listen; do
+for s in build_donemap qa review_check guard_tool locks handoff_check dream lookup roadmap questions index listen plain loop draft recover activity growth; do
   out="$(python3 -I "loop/scripts/$s.py" selftest 2>&1)"; rc=$?
   printf '%s\n' "$out" | tail -1
   if [ $rc -ne 0 ]; then printf '%s\n' "$out"; fail=1; fi

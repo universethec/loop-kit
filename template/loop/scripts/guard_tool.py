@@ -6,7 +6,7 @@
 # human-only override token; code (python -c, heredoc, perl, node -e, patch) naming a lock; a write, by an edit tool or
 # a shell command, to a lock (the kit's scripts, kit.json, loop.sh, settings, githooks, .git), to kit.json
 # "locked_globs", to an opened unit's promise, to the transcripts; a new entry at the repo root (kit.json "root_ok").
-# The owner changes any of these himself: a command he types after `!` is not a tool call and this guard never sees it.
+# The owner changes any of these by hand: a command the owner types after `!` is not a tool call and this guard never sees it.
 #
 #   guard_tool.py            (the hook; stdin = the tool call)       guard_tool.py selftest   planted calls
 import fnmatch
@@ -22,7 +22,8 @@ import kit  # noqa: E402
 HOME = str(Path.home())
 OVERRIDE = "LOOP_OWNER"
 SCRIPTS = ["kit.py", "guard_tool.py", "locks.py", "qa.py", "review_check.py", "build_donemap.py", "handoff_check.py",
-           "dream.py", "brief.py", "lookup.py", "notify.sh", "selftest.sh"]
+           "dream.py", "brief.py", "lookup.py", "notify.sh", "selftest.sh", "loop.py", "draft.py", "recover.py", "activity.py",
+           "growth.py"]
 LOCKS = [".claude/settings.json", ".claude/settings.local.json", ".claude/githooks/", ".git/", "loop/kit.json", "loop/loop.sh",
          "loop/loop-mcp.json"] + [f"loop/scripts/{s}" for s in SCRIPTS]
 # Written only by the scripts, never by hand: locked for the tool guard, but a commit carries them freely (qa close
@@ -131,6 +132,15 @@ def decide(call, root):
     return None
 
 
+def yourself(call):
+    """What the owner types to do a refused thing by hand: the guard never sees a command typed after `!`."""
+    inp = call.get("tool_input") or {}
+    if call.get("tool_name") == "Bash" and inp.get("command"):
+        return "To do it yourself, type: ! " + re.sub(r"\s+", " ", inp["command"]).strip()
+    p = inp.get("file_path") or inp.get("notebook_path")
+    return f"To do it yourself, make the change in your own editor: {p}" if p else "To do it yourself, do it by hand."
+
+
 def main():
     try:
         call = json.load(sys.stdin)
@@ -140,7 +150,7 @@ def main():
         decide(call, kit.ROOT)
     except Refused as r:
         kit.catch(r.check, f"{call.get('tool_name')}: {r}")
-        print(f"guard: refused. {r} the owner can do it himself with a command he types after `!`.", file=sys.stderr)
+        print(f"guard: refused. {r} {yourself(call)}", file=sys.stderr)
         sys.exit(2)
     sys.exit(0)
 
@@ -196,6 +206,11 @@ def selftest():
                 got = r.check
             if got != want:
                 bad.append(f"{what} (got {got})")
+        n += 2
+        if yourself(B("git  push origin main")) != "To do it yourself, type: ! git push origin main":
+            bad.append("a refused command is printed for the owner to type after !")
+        if str(root / "loop/kit.json") not in yourself(E("loop/kit.json")):
+            bad.append("a refused edit names the file to change by hand")
     if bad:
         print("guard_tool selftest: FAILED: " + "; ".join(bad))
         return 1

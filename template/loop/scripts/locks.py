@@ -9,7 +9,7 @@
 # 3. Sizes (kit.json): CLAUDE.md <= 200 lines, loop/HANDOFF.md <= 20, memory.json <= 12 rules, headlines <= 170 chars.
 # 4. A lock (the kit's scripts, kit.json, loop.sh, settings, githooks) changes only by the owner's own hand.
 # 5. No new entry at the repo root outside kit.json root_ok.       6. A commit subject over kit.json subject_max (100).
-# The owner's own hand: LOOP_OWNER=1 in his environment skips 1, 2, 4 and 5; the tool guard refuses that token from a session.
+# The owner's own hand: LOOP_OWNER=1 in the owner's environment skips 1, 2, 4 and 5; the tool guard refuses that token from a session.
 import json
 import os
 import re
