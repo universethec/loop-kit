@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+# The commit gates (core.hooksPath = .claude/githooks, set by new_project.py). A law with no automatic check decays
+# into a wish; every refusal is logged to loop/state/catches.csv for dream.py to count.
+#
+#   1. loop/scripts/locks.py on the staged files (done-rules never weaken, DECISIONS.md append-only, size caps,
+#      locks change only by Alex's hand, no new root entry).
+#   2. The same locks again from the last approved commit, so an edited lock never judges itself.
+#   3. loop/scripts/qa.py hook: a staged unit is closed, a committed unit never changes.
+#   4. A staged change under loop/scripts/: every selftest must still pass (a gate nobody watched fail is a wish).
+#
+# Alex's own hand: LOOP_ALEX=1 git commit ... (the tool guard refuses that token from a session).
+cd "$(git rev-parse --show-toplevel)" || exit 1
+
+python3 -I loop/scripts/locks.py || exit 1
+
+H="$(mktemp -d)"
+if git archive HEAD loop/scripts 2>/dev/null | tar -x -C "$H" 2>/dev/null && [ -f "$H/loop/scripts/locks.py" ]; then
+  if ! LOOP_ROOT="$PWD" python3 -I "$H/loop/scripts/locks.py"; then
+    rm -rf "$H"
+    echo "  commit BLOCKED — the locks of the last approved commit refused it." >&2
+    exit 1
+  fi
+fi
+rm -rf "$H"
+
+python3 -I loop/scripts/qa.py hook || exit 1
+
+if git diff --cached --name-only --diff-filter=ACM | grep -q '^loop/scripts/'; then
+  if ! OUT="$(bash loop/scripts/selftest.sh 2>&1)"; then
+    printf '%s\n' "$OUT" >&2
+    echo "  commit BLOCKED — a gate's selftest failed: it no longer refuses what it exists to refuse." >&2
+    exit 1
+  fi
+fi
+exit 0

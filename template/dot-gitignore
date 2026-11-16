@@ -1,0 +1,6 @@
+# the loop's runtime state (sentinels, metrics, catches, logs, dream reports): per machine, never committed
+/loop/state/
+__pycache__/
+.DS_Store
+# machine-local Claude permissions: never commit
+.claude/settings.local.json

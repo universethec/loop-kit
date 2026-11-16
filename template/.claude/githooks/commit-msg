@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+# Short commits: the subject (first non-comment line) is at most kit.json subject_max characters (default 100).
+# A unit is ONE commit; its subject says what landed in one line, the body carries the detail.
+#
+#   called by git with the message file as $1; exit 1 refuses the commit
+#
+# The check itself lives in loop/scripts/locks.py (`locks.py subject <file>`), which logs every refusal to
+# loop/state/catches.csv as locks:subject-cap, so dream.py can count whether this gate ever catches anything.
+# Its selftest: locks.py selftest (101 chars refused, 100 passes, comment lines skipped) and selftest.sh, which
+# runs this very hook on a planted message.
+cd "$(git rev-parse --show-toplevel)" || exit 1
+python3 -I loop/scripts/locks.py subject "$1"

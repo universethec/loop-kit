@@ -1,0 +1,4 @@
+/* The typefaces the pages name, mapped to fonts already on the reader's machine. The original kit embedded
+ * licensed font files here; this public copy does not. To use your own, add @font-face rules with your files. */
+@font-face{font-family:'Neue Montreal';src:local('Inter'),local('Helvetica Neue'),local('Helvetica'),local('Arial');font-weight:100 900}
+@font-face{font-family:'JetBrains Mono';src:local('JetBrains Mono'),local('SF Mono'),local('Menlo'),local('Consolas');font-weight:100 900}
