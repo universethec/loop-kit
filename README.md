@@ -4,11 +4,15 @@ Start a project with Claude Code that already knows how to work: one road, a don
 before every piece of work, a blind review after it, and a start screen that carries what exists, what you said and
 what you corrected from one session to the next.
 
-You say **"boot loop-kit"** in an empty folder. Claude asks you a few things on one screen, builds the project, makes
-the first commit, and every session after that opens already informed.
+You say **"boot loop-kit"**. Claude first interviews you about the project, one question at a time (what it is, why
+and for whom, what it is not, what done looks like, what is open), and writes your answers, in your words, into the
+project's genesis. Only then does it propose the road: phases with plain titles, steps a machine can check. You say
+yes or change a line; it builds the project, makes the first commit, and every session after opens already informed.
 
 ## What a project gets
 
+- **A genesis.** `GENESIS.md`: what the project is, why, for whom, what it is not, what is open, your words quoted
+  exactly; it grows by dated entries and is never rewritten. The road is proposed from it.
 - **The road and the done map.** Your project is a few steps; each step is done only when its lines pass (a file
   exists, a command passes, a file holds some words), never because a sentence says so. The road (phases over the
   steps) changes only through your own words, as a numbered version. A page, `loop/roadmap.html`, shows where you are.

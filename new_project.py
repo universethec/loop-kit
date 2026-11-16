@@ -28,6 +28,8 @@ answers.json (only name, mission and steps are required):
    "architecture": {"read": "...", "nodes": [{"id": "a", "name": "...", "does": "...", "x": 20, "y": 20, "w": 160, "h": 90, "ruled": ["step:core"],
                      "built": [...], "proven": [...], "code": ["src/x.py"]}], "edges": [{"from": "a", "to": "b", "label": "..."}]},  the schematic, optional
    "words": [{"word": "...", "means": "..."}],  the shared words, optional
+   "genesis": {"what": "...", "why": "...", "for_whom": "...", "not": "...", "done": "...", "open": "...",
+               "words": ["the owner's own sentences, verbatim"]},   the founding interview -> GENESIS.md
    "mission_words": "The owner's own words for the mission, if he gave them: ledger entry 1 (default: the mission line)",
    "open_problem": "what is open, one sentence, optional: the ledger's first Open line",
    "doors": ["money", "what a user sees"],      what always needs the owner (deleting files, rewriting git history and
@@ -55,6 +57,10 @@ ALWAYS_DOORS = ["deleting files, rewriting git history or a new root entry"]
 SAMPLE = {
     "name": "Toy Counter",
     "mission": "A tiny word counter: a script that counts the words of a file, with tests that prove it.",
+    "genesis": {"what": "A counter of the words in a text file.", "why": "Tools that count words disagree on hyphens and numbers.",
+                "not": "Not an editor, not a spell checker.", "done": "It counts my own files the way I count them.",
+                "open": "Whether a hyphenated word is one word or two.",
+                "words": ["I want a counter I can trust on my own files, not a toy that only passes its tests"]},
     "steps": [
         {"id": "counter", "name": "The counter counts", "done_when": [
             "file:src/count.py",
@@ -128,6 +134,38 @@ def problems(A):
     return out
 
 
+GENESIS_PARTS = [("what", "What this is"), ("why", "Why it matters"), ("for_whom", "For whom"), ("not", "What it is not"),
+                 ("done", "What done looks like"), ("open", "What is open")]
+
+
+def first_words(A):
+    """Ledger entry 1: the owner's own words, from the genesis interview where there was one."""
+    g = A.get("genesis") or {}
+    q = [w for w in (g.get("words") or []) if str(w).strip()]
+    return q[0] if q else A.get("mission_words")
+
+
+def genesis_text(A, name, today):
+    """GENESIS.md: the founding interview, written once at boot. The owner's words are quoted exactly; each part says
+    what Claude understood. Like the ledger it grows by dated entries at the end and is never rewritten."""
+    g = A.get("genesis") or {}
+    out = [f"# {name}: genesis", "",
+           "What this project is, why, for whom, what it is not, what done looks like and what is open: the founding",
+           "interview, the owner's words quoted exactly, each part in Claude's reading. Written at boot; it grows by dated",
+           "entries at the end and is never rewritten. The road (loop/roadmap.json) was proposed from it.", "",
+           f"## The interview ({today})", ""]
+    if not g:
+        out += ["Not held yet. The first session interviews the owner, one question at a time, and writes each answer here",
+                "in the owner's words before the road is touched.", ""]
+    for key, title in GENESIS_PARTS:
+        if g.get(key):
+            out += [f"**{title}.** {g[key].strip()}", ""]
+    if g.get("words"):
+        out += ["**In the owner's words:**", ""] + [f'> "{w.strip()}"' for w in g["words"] if str(w).strip()] + [""]
+    out += ["## Entries", "", "(Dated entries go here, newest last, each in the owner's words.)", ""]
+    return "\n".join(out)
+
+
 def fill(text, V):
     for k, v in V.items():
         text = text.replace("{{" + k + "}}", v)
@@ -151,6 +189,7 @@ def create(dest, A, quiet=False):
     for rel in ("CLAUDE.md", "loop/HANDOFF.md", "DECISIONS.md"):
         f = dest / rel
         f.write_text(fill(f.read_text(), V))
+    (dest / "GENESIS.md").write_text(genesis_text(A, name, today))
     steps, prev = [], None
     for i, s in enumerate(A["steps"]):
         sid = s.get("id") or slug(s.get("name", f"step-{i + 1}"))
@@ -182,7 +221,7 @@ def create(dest, A, quiet=False):
                                        "clutter": [{"name": "loose items in loop/state", "dir": "loop/state"}],
                                        "retired": [], "checks": [], "loop": "bash loop/loop.sh status", "needs_owner": "loop/state/NEEDS-OWNER.md", "work": "units"},
                             "versions": [], "before": []})
-    kitroot = ["CLAUDE.md", "DECISIONS.md", "loop", ".claude", ".git", ".gitignore"]
+    kitroot = ["CLAUDE.md", "DECISIONS.md", "GENESIS.md", "loop", ".claude", ".git", ".gitignore"]
     W("loop/kit.json", {"what": "This project's loop config. A lock: the owner changes it himself.", "project": name, "session": slug(name),
                         "model": A.get("model") or "claude-opus-5-5", "effort": A.get("effort") or "xhigh",
                         "notify_title": A.get("notify_title") or name, "ntfy_topic": A.get("ntfy_topic") or DEFAULT_TOPIC,
@@ -199,10 +238,11 @@ def create(dest, A, quiet=False):
     W("loop/qa/index.json", {"what": "The project's index, printed at every start by loop/scripts/brief.py through index.py: project lines (each names a real file), the mission ledger (the owner's words, dated, never rewritten) and his corrections in force. Lean: replace or shorten, never only add.",
                              "project": [
                                  {"says": "The instructions: the mission, how a unit runs, the hard rules and the doors.", "file": "CLAUDE.md"},
+                                 {"says": "The genesis: what this is, why, for whom, what it is not, what is open, in the owner's words.", "file": "GENESIS.md"},
                                  {"says": "What the owner decided, numbered and append-only.", "file": "DECISIONS.md"},
                                  {"says": "The road: phases over the done map's steps; it changes only by the owner's words, as a numbered version.", "file": "loop/roadmap.json"},
                                  {"says": "What done means: every step, each with lines a machine checks.", "file": "loop/qa/done-rules.json"}],
-                             "ledger": [{"n": 1, "date": today, "words": (A.get("mission_words") or V["MISSION"]).strip(),
+                             "ledger": [{"n": 1, "date": today, "words": (first_words(A) or V["MISSION"]).strip(),
                                          **({"open": A["open_problem"].strip()} if (A.get("open_problem") or "").strip() else {})}],
                              "corrections": []})
     W("loop/qa/resources.json", {"what": "Where every resource lives and what it answers; lookup.py find reads this. Add a row per new resource.", "resources": [
@@ -247,7 +287,11 @@ def selftest():
                        and (dest / "loop" / "qa" / "health-log.json").exists()
                        and subprocess.run([sys.executable, "-I", "loop/scripts/roadmap.py", "--check"], cwd=dest, capture_output=True).returncode == 0)
         print(f"roadmap: {'ok · the dashboard shows phase 1, ' + first + ', as where we are, version 1 is written and health is measured' if road_ok else 'FAILED'}")
-        ok = r.returncode == 0 and road_ok
+        gen = (dest / "GENESIS.md").read_text() if (dest / "GENESIS.md").exists() else ""
+        gen_ok = bool(gen and SAMPLE["genesis"]["words"][0] in gen and "What it is not" in gen
+                      and SAMPLE["genesis"]["words"][0] in (dest / "loop" / "qa" / "index.json").read_text())
+        print(f"genesis: {'ok · written from the interview, the owner' + chr(39) + 's words quoted, ledger entry 1 is them' if gen_ok else 'FAILED'}")
+        ok = r.returncode == 0 and road_ok and gen_ok
         print(f"new_project selftest: {'ALL GREEN' if ok else 'FAILED'} · sample map: {brief.splitlines()[0]}")
         return 0 if ok else 1
 

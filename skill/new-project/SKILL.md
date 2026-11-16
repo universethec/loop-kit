@@ -1,48 +1,57 @@
 ---
 name: new-project
-description: Create a new project that already runs the owner's autonomous Claude loop (lean loop-kit), with the road, the done map, the start-screen index (what exists, the mission ledger in his words, his corrections) and listening across sessions. Use when the owner says "boot loop-kit", "new project", "start a project with the loop", "set up a project like harbingr", or types /new-project.
+description: Boot a new project that already runs the loop-kit method: a genesis interview first, then a road proposed from it, the done map, the start-screen index (what exists, the mission ledger in the owner's words, the owner's corrections) and listening across sessions. Use when the owner says "boot loop-kit", "new project", "start a project with the loop", or types /new-project.
 ---
 
-# New project, already on the loop
+# Boot a project with loop-kit
 
-The kit lives at `<path to loop-kit>`. Its `new_project.py --help` is the full
-reference for answers.json; read it only if something below is unclear.
+The kit lives at `<path to loop-kit>`. `python3 new_project.py --help` there is the full reference for answers.json.
 
-## 1. Ask, on one screen
+## 1. The genesis interview: understand before proposing anything
 
-Draft every answer yourself first from what the owner already said, then show him ONE message, plain words, each line
-with your pick so he can answer "yes" or change one line:
+Interview the owner, one question at a time, plain words, each question with your guess so they can say "yes" or
+correct it. Keep their own sentences word for word; they go into GENESIS.md and ledger entry 1.
 
-1. **Name** — your pick.
-2. **Mission**, one sentence: what "done" means for the whole project — your draft. And his own words for it, if he
-   said them (they become ledger entry 1, `mission_words`, word for word), and what is open, one sentence
-   (`open_problem`), if there is one.
-3. **Steps** (2 to 6, in order of work). For each: a name, what done means as lines a machine can check (a file
-   exists, a command passes, a file holds some words), and whether only the owner can finish it. Draft them all.
-4. **Doors** — what always needs him. Default: what a user sees; money. (Deleting files, rewriting git history and
-   a new root entry are always added.)
-5. **Project rules**, optional: one line each. Default: none.
-6. **Model / effort** — default `claude-opus-5-5` / `xhigh`.
-7. **Phone title** — default: the name.
-8. **Where** — default `<your projects folder>/<name-slug>`; root folders besides the kit's
-   own (default `src`, `tests`).
+1. **What is this?** In one or two sentences, in their words.
+2. **Why does it matter, and for whom?**
+3. **What is it not?** The nearest thing people would mistake it for.
+4. **What does done look like?** Something you could watch happen or check.
+5. **What is open?** The question nobody can answer yet; the part they are least sure of.
 
-Do not ask anything else. If he says "your call", take your picks.
+Ask a follow-up only when an answer could mean two different projects. Stop when you can say the project back in
+two sentences and they agree. Then say it back, and ask for their yes.
 
-## 2. Make it
+## 2. Propose the road, from the genesis
 
-Write `answers.json` in the session scratchpad (format: `python3 new_project.py --help`; a step's lines may be
-shorthand `file:<path>`, `cmd:<shell>`, `grep:<path>::<words>`). Then:
+Only now. One screen, your pick on every line, so they answer "yes" or change a line:
+
+- **Phases:** 2 to 6 stretches of the road, in order, each with a plain title someone outside the project would
+  understand, and one sentence of what done means for that phase.
+- **Steps:** the smallest pieces of work inside each phase. Each step names what done means as lines a machine can
+  check (a file exists, a command passes, a file holds some words), never a sentence that only sounds done; says
+  whether only the owner can finish it; and sits on exactly one phase. A step waits on the step before it unless
+  you say otherwise.
+- **A good road:** the first phase can start today; each phase ends on something the owner can look at; owner-only
+  steps are few and marked; nothing on it is a guess dressed as a fact.
+- **Also, with defaults:** the name; the doors (what always needs the owner: default what a user sees, money;
+  deleting files, rewriting git history and a new root entry are always added); project rules (default none);
+  model and effort (default `claude-opus-5-5` / `xhigh`); a phone title and an ntfy topic if they want buzzes;
+  where (a new empty folder); top-level folders besides the kit's (default `src`, `tests`).
+
+## 3. Make it
+
+Write `answers.json` in the session scratchpad: `name`, `mission`, `genesis` (what, why, for_whom, not, done, open,
+and `words`: their own sentences, verbatim), `steps`, `phases`, and the defaults. Then:
 
 ```bash
 python3 "<path to loop-kit>/new_project.py" "<path>" --answers "<scratchpad>/answers.json"
 cd "<path>" && bash loop/scripts/selftest.sh && python3 -I loop/scripts/index.py --check && python3 -I loop/scripts/brief.py
 ```
 
-If new_project refuses (a bad line, a taken path), fix the answers and run it again; never edit the kit.
+If it refuses (a bad line, a taken path), fix the answers and run it again; never edit the kit from here. The road's
+page, `loop/roadmap.html`, is built by `python3 -I loop/scripts/roadmap.py`; the boot builds it once.
 
-## 3. Report, in four lines
+## 4. Report, in four lines
 
-The path; the map's first line (quoted from `--brief`); the selftest's last line (`selftest: ALL GREEN` or what
-failed); and the one command to start: `loop/loop.sh start` (only when he says "fire loop"; never start it yourself).
-Never push. Never delete a file.
+The path; the map's first line; the checks' last line (`selftest: ALL GREEN` or what failed); and how to begin:
+say `go` in a session there. The unattended loop starts only on the owner's `fire loop`. Never push, never delete.

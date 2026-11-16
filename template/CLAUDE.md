@@ -11,7 +11,12 @@ working rules, `loop/qa/memory.json` (the start hook prints one line each; open 
 
 ## Three files answer three questions
 
-- **The road, and where we are on it:** `loop/roadmap.json`, page `loop/roadmap.html`
+- **What is this, and why:** `GENESIS.md`, the founding interview, the owner's words quoted exactly; it grows by
+  dated entries and is never rewritten. If it says the interview has not been held, hold it first, one question at
+  a time (what this is, why and for whom, what it is not, what done looks like, what is open), before the road.
+- **The road, and where we are on it:** a good road is proposed from the genesis: 2 to 6 phases with plain titles
+  and one sentence of what done means each; steps, the smallest pieces, each with lines a machine checks, on exactly
+  one phase, owner-only steps few and marked; the first phase can start today. `loop/roadmap.json`, page `loop/roadmap.html`
   (`python3 -I loop/scripts/roadmap.py --status`). One road: its phases sit over the done map's steps, status is
   computed, and it changes only through `roadmap.py change "<the owner's words>"`, a numbered version. Open notes go on
   their phase, not in NOW. At every close, anything new that came up is a note on its phase or a new step with a
